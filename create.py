@@ -14,7 +14,7 @@ def main():
     solution = Solution()
     while True:
         try:
-            s = input("Please enter a list of int separated with single space: ")
+            s = input("s: ")
             print(f"ans = {solution.solve(s)}")
         except Exception as e:
             print(f"Error: {e}")
@@ -46,7 +46,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="This script is for creating a new python script in current folder and import the template into this file."
     )
-    parser.add_argument("file_name", help="Nae of the Python script file to create")
+    parser.add_argument("file_name", help="Name of the Python script file")
     args = parser.parse_args()
     file_name = args.file_name
     file_name = parse_file_name(file_name)

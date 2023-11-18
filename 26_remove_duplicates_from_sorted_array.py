@@ -21,7 +21,7 @@ def main():
     solution = Solution()
     while True:
         try:
-            s = input("Please enter a list of int separated with single space: ")
+            s = input("Please enter a list of int: ")
             print(f"k = {solution.removeDuplicates(string_to_int_list(s))}")
         except Exception as e:
             print(f"Error: {e}")

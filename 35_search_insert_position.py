@@ -37,7 +37,7 @@ def main():
     solution = Solution()
     while True:
         try:
-            s = input("Please enter a list of int separated with single space: ")
+            s = input("Please enter a list of int: ")
             i = input("Please enter the int to insert: ")
             print(f"ans = {solution.searchInsert(string_to_int_list(s),int(i))}")
         except Exception as e:

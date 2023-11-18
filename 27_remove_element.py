@@ -18,7 +18,7 @@ def main():
     solution = Solution()
     while True:
         try:
-            s = input("Please enter a list of int separated with single space: ")
+            s = input("Please enter a list of int: ")
             val = input("Please enter the integer that you want to delete: ")
             print(f"k = {solution.removeElement(string_to_int_list(s),int(val))}")
         except Exception as e:
