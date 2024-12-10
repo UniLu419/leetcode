@@ -4,6 +4,9 @@ import re
 
 def create_python_file(file_name: str):
     python_code = """\
+from typing import List
+
+
 class Solution:
     def solve(i: int) -> int:
         pass
@@ -14,8 +17,20 @@ def main():
     solution = Solution()
     while True:
         try:
-            s = input("s: ")
-            print(f"ans = {solution.solve(s)}")
+            index = int(input("index: "))
+            match index:
+                case 1:
+                    # sample 1
+                    k = 3
+                case 2:
+                    # sample 2
+                    k = 2
+                case 3:
+                    # sample 3
+                    k = 3
+                case _:
+                    break
+            print(f"ans = {solution.solve(k)}")
         except Exception as e:
             print(f"Error: {e}")
             break
@@ -59,3 +74,4 @@ if __name__ == "__main__":
 
 
 # Usage:  python3 create.py "2146. K Highest Ranked Items Within a Price Range"
+# python3 create.py "239. Sliding Window Maximum"
