@@ -5,9 +5,11 @@ import re
 def create_python_file(file_name: str):
     python_code = """\
 from typing import List
+from timing_dec import timing
 
 
 class Solution:
+    @timing
     def solve(i: int) -> int:
         pass
 
@@ -74,4 +76,4 @@ if __name__ == "__main__":
 
 
 # Usage:  python3 create.py "2146. K Highest Ranked Items Within a Price Range"
-# python3 create.py "45. Jump Game II"
+# python3 create.py "42. Trapping Rain Water"
