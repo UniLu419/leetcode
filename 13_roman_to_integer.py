@@ -1,37 +1,41 @@
+from typing import List
+from timing_dec import timing
+
+
 class Solution:
+    @timing
     def romanToInt(self, s: str) -> int:
-        romanDict = {
+        match_table = {
             "I": 1,
+            "IV": 4,
             "V": 5,
+            "IX": 9,
             "X": 10,
+            "XL": 40,
             "L": 50,
+            "XC": 90,
             "C": 100,
+            "CD": 400,
             "D": 500,
+            "CM": 900,
             "M": 1000,
         }
-        result = 0
-        for i in range(len(s)):
-            if i < len(s) - 1 and romanDict[s[i]] < romanDict[s[i + 1]]:
-                result -= romanDict[s[i]]
+        index = 0
+        n = len(s)
+        total = 0
+        while index < n:
+            if index + 1 < n:
+                double_s = s[index] + s[index + 1]
+                if double_s in match_table:
+                    total += match_table[double_s]
+                    index += 2
+                else:
+                    total += match_table[s[index]]
+                    index += 1
             else:
-                result += romanDict[s[i]]
-        return result
-
-
-class Solution2:
-    def isPalindrome(self, x: int) -> bool:
-        return self.checkString(str(x))
-
-    def checkString(self, number_string: str) -> bool:
-        head = number_string[0]
-        tail = number_string[len(number_string) - 1]
-        if head != tail:
-            return False
-
-        if len(number_string) > 2:
-            return self.checkString(number_string[1:][:-1])
-
-        return True
+                total += match_table[s[index]]
+                index += 1
+        return total
 
 
 def main():
@@ -39,7 +43,19 @@ def main():
     solution = Solution()
     while True:
         try:
-            s = input("Please enter a roman string: ")
+            index = int(input("index: "))
+            match index:
+                case 1:
+                    # sample 1
+                    s = "III"
+                case 2:
+                    # sample 2
+                    s = "LVIII"
+                case 3:
+                    # sample 3
+                    s = "MCMXCIV"
+                case _:
+                    break
             print(f"ans = {solution.romanToInt(s)}")
         except Exception as e:
             print(f"Error: {e}")
