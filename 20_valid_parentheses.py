@@ -1,25 +1,38 @@
+from typing import List
+from timing_dec import timing
+
+
 class Solution:
+    @timing
     def isValid(self, s: str) -> bool:
-        bucket = []
-        for i in range(len(s)):
-            if s[i] == "(" or s[i] == "[" or s[i] == "{":
-                bucket.append(s[i])
-                continue
-            if not len(bucket) > 0:
-                return False
-            if s[i] == ")":
-                if bucket[-1] != "(":
-                    return False
-            if s[i] == "]":
-                if bucket[-1] != "[":
-                    return False
-            if s[i] == "}":
-                if bucket[-1] != "{":
-                    return False
-            bucket = bucket[:-1]
-        if len(bucket) == 0:
-            return True
-        return False
+        stack = []
+        for char in s:
+            match char:
+                case "(":
+                    stack.append("(")
+                case "[":
+                    stack.append("[")
+                case "{":
+                    stack.append("{")
+                case ")":
+                    if not stack:
+                        return False
+                    t = stack.pop()
+                    if t != "(":
+                        return False
+                case "]":
+                    if not stack:
+                        return False
+                    t = stack.pop()
+                    if t != "[":
+                        return False
+                case "}":
+                    if not stack:
+                        return False
+                    t = stack.pop()
+                    if t != "{":
+                        return False
+        return not stack
 
 
 def main():
@@ -27,7 +40,22 @@ def main():
     solution = Solution()
     while True:
         try:
-            s = input("Please enter a brackets string: ")
+            index = int(input("index: "))
+            match index:
+                case 1:
+                    # sample 1
+                    s = "()"
+                case 2:
+                    # sample 2
+                    s = "()[]{}"
+                case 3:
+                    # sample 3
+                    s = "(]"
+                case 4:
+                    # sample 4
+                    s = "([])"
+                case _:
+                    break
             print(f"ans = {solution.isValid(s)}")
         except Exception as e:
             print(f"Error: {e}")
