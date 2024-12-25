@@ -1,39 +1,21 @@
-from typing import Optional
-from custom_types import TreeNode
-from utils import list_to_tree, string_to_int_list
+from typing import List, Optional
+from timing_dec import timing
+
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left: Optional[TreeNode] = left
+        self.right: Optional[TreeNode] = right
 
 
 class Solution:
+    @timing
     def maxDepth(self, root: Optional[TreeNode]) -> int:
-        if root is None:
+        if not root:
             return 0
-        left_depth = self.maxDepth(root.left)
-        right_depth = self.maxDepth(root.right)
-        if left_depth < right_depth:
-            return right_depth + 1
         else:
-            return left_depth + 1
-
-
-class Solution2:
-    def maxDepth(self, root: Optional[TreeNode]) -> int:
-        if root is None:
-            return 0
-        current_queue = [root]
-        depth = 0
-        next_queue = []
-        while len(current_queue) != 0:
-            depth += 1
-            while len(current_queue) != 0:
-                current = current_queue.pop(0)
-                if current.left is not None:
-                    next_queue.append(current.left)
-                if current.right is not None:
-                    next_queue.append(current.right)
-            if len(next_queue) != 0:
-                current_queue = next_queue
-                next_queue = []
-        return depth
+            return max(self.maxDepth(root.left), self.maxDepth(root.right)) + 1
 
 
 def main():
@@ -41,9 +23,20 @@ def main():
     solution = Solution()
     while True:
         try:
-            tree_list = string_to_int_list(input("tree_list: "))
-            root = list_to_tree(tree_list)
-            print(f"ans = {solution.maxDepth(root)}")
+            index = int(input("index: "))
+            match index:
+                case 1:
+                    # sample 1
+                    k = 3
+                case 2:
+                    # sample 2
+                    k = 2
+                case 3:
+                    # sample 3
+                    k = 3
+                case _:
+                    break
+            print(f"ans = {solution.solve(k)}")
         except Exception as e:
             print(f"Error: {e}")
             break

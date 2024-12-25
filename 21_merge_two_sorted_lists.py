@@ -1,43 +1,52 @@
-from typing import Optional
-from custom_types import ListNode
-from utils import string_to_single_linked_list, print_single_linked_list
+from typing import List, Optional
+from timing_dec import timing
+
+
+class ListNode:
+    def __init__(self, val=0, next=None):
+        self.val = val
+        self.next: Optional[ListNode] = next
 
 
 class Solution:
+    @timing
     def mergeTwoLists(
         self, list1: Optional[ListNode], list2: Optional[ListNode]
     ) -> Optional[ListNode]:
-        sum_list: Optional[ListNode] = None
-        parent: Optional[ListNode] = None
-        head1 = list1
-        head2 = list2
-        while head1 is not None and head2 is not None:
-            if head1.val > head2.val:
-                current = head2
-                head2 = head2.next
+        ans: Optional[ListNode] = None
+        current: Optional[ListNode] = None
+        while list1 and list2:
+            if list1.val < list2.val:
+                if current:
+                    current.next = list1
+                    list1 = list1.next
+                    current = current.next
+                else:
+                    ans = list1
+                    current = ans
+                    list1 = list1.next
             else:
-                current = head1
-                head1 = head1.next
-
-            if sum_list is None:
-                sum_list = current
-                parent = current
+                if current:
+                    current.next = list2
+                    list2 = list2.next
+                    current = current.next
+                else:
+                    ans = list2
+                    current = ans
+                    list2 = list2.next
+        if list1:
+            if current:
+                current.next = list1
             else:
-                parent.next = current
-                parent = current
-        if head1 is None:
-            if sum_list is None:
-                return list2
+                ans = list1
+                current = list1
+        if list2:
+            if current:
+                current.next = list2
             else:
-                parent.next = head2
-                return sum_list
-        if head2 is None:
-            if sum_list is None:
-                return list1
-            else:
-                parent.next = head1
-                return sum_list
-        return list
+                ans = list2
+                current = list2
+        return ans
 
 
 def main():
@@ -45,12 +54,20 @@ def main():
     solution = Solution()
     while True:
         try:
-            s1 = input("Please enter list1: ")
-            s2 = input("Please enter list2: ")
-            list1 = string_to_single_linked_list(s1)
-            list2 = string_to_single_linked_list(s2)
-            ans = solution.mergeTwoLists(list1, list2)
-            print_single_linked_list(ans)
+            index = int(input("index: "))
+            match index:
+                case 1:
+                    # sample 1
+                    k = 3
+                case 2:
+                    # sample 2
+                    k = 2
+                case 3:
+                    # sample 3
+                    k = 3
+                case _:
+                    break
+            print(f"ans = {solution.solve(k)}")
         except Exception as e:
             print(f"Error: {e}")
             break

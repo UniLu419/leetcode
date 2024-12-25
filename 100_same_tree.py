@@ -1,18 +1,28 @@
 from typing import List, Optional
-from custom_types import TreeNode
-from utils import list_to_tree, string_to_int_list
+from timing_dec import timing
+
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left: Optional[TreeNode] = left
+        self.right: Optional[TreeNode] = right
 
 
 class Solution:
+    @timing
     def isSameTree(self, p: Optional[TreeNode], q: Optional[TreeNode]) -> bool:
-        if p is None and q is None:
+        if not p and not q:
             return True
-        if p is None or q is None:
+        if not p or not q:
             return False
-        if p.val == q.val:
-            return self.isSameTree(p.left, q.left) and self.isSameTree(p.right, q.right)
-        else:
+        if p.val != q.val:
             return False
+        if not self.isSameTree(p.left, q.left):
+            return False
+        if not self.isSameTree(p.right, q.right):
+            return False
+        return True
 
 
 def main():
@@ -20,11 +30,20 @@ def main():
     solution = Solution()
     while True:
         try:
-            p_tree_list = string_to_int_list(input("p_tree_list: "))
-            q_tree_list = string_to_int_list(input("q_tree_list: "))
-            p_root = list_to_tree(p_tree_list)
-            q_root = list_to_tree(q_tree_list)
-            print(f"ans = {solution.isSameTree(p_root,q_root)}")
+            index = int(input("index: "))
+            match index:
+                case 1:
+                    # sample 1
+                    k = 3
+                case 2:
+                    # sample 2
+                    k = 2
+                case 3:
+                    # sample 3
+                    k = 3
+                case _:
+                    break
+            print(f"ans = {solution.solve(k)}")
         except Exception as e:
             print(f"Error: {e}")
             break
