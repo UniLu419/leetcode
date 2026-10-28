@@ -42,6 +42,19 @@ PENDING = "待填"
 DIFFICULTIES = {"Easy": "简单", "Medium": "中等", "Hard": "困难"}
 UNRATED = "未标难度"
 UNTAGGED = "未分类"
+# English names for the 题型 tags, so `-t` accepts either language.
+TAG_ENGLISH = {
+    "哈希表": "hash table", "哈希计数": "hash counting", "双指针": "two pointers",
+    "快慢指针": "fast and slow pointers", "滑动窗口": "sliding window", "前缀和": "prefix sum",
+    "前后缀最大值": "prefix and suffix max", "二分查找": "binary search", "栈": "stack",
+    "单调栈": "monotonic stack", "单调队列": "monotonic queue", "堆": "heap", "链表": "linked list",
+    "二叉树": "binary tree", "二叉搜索树": "binary search tree", "递归": "recursion",
+    "分治": "divide and conquer", "回溯": "backtracking", "DFS": "dfs", "BFS": "bfs", "图": "graph",
+    "拓扑排序": "topological sort", "并查集": "union find", "字典树": "trie", "贪心": "greedy",
+    "动态规划": "dynamic programming dp", "区间": "intervals", "排序": "sorting",
+    "矩阵模拟": "matrix simulation", "字符串模拟": "string simulation", "数学": "math",
+    "位运算": "bit manipulation", "设计": "design",
+}
 TYPING_NAMES = {"List", "Optional", "Dict", "Set", "Tuple", "Deque"}
 NODE_NAMES = {"ListNode", "TreeNode"}
 
@@ -695,10 +708,16 @@ def wanted_difficulty(value):
     die(f"难度只能是 easy / medium / hard（或 简单 / 中等 / 困难），收到「{value}」")
 
 
+def tag_matches(tag: str, query: str) -> bool:
+    """Substring match against the tag or its English name, ignoring case."""
+    query = query.strip().lower()
+    return query in tag.lower() or query in TAG_ENGLISH.get(tag, "")
+
+
 def passes_filters(notes: dict, difficulty, tag) -> bool:
     if difficulty and problem_difficulty(notes) != difficulty:
         return False
-    return not tag or any(tag in t for t in problem_tags(notes))
+    return not tag or any(tag_matches(t, tag) for t in problem_tags(notes))
 
 
 def cmd_next(args):
@@ -784,7 +803,7 @@ def cmd_list(args):
             continue
         if not passes_filters(notes, difficulty, args.t):
             continue
-        tags = [t for t in problem_tags(notes) if not args.t or args.t in t] or [UNTAGGED]
+        tags = [t for t in problem_tags(notes) if not args.t or tag_matches(t, args.t)] or [UNTAGGED]
         for tag in tags:
             groups.setdefault(problem_difficulty(notes), {}).setdefault(tag, []).append((problem, notes, solved))
     if not groups:
@@ -865,12 +884,12 @@ def main(argv=None):
     p = sub.add_parser("next", help="按复习间隔列出最该重做的题")
     p.add_argument("-n", type=int, default=10, help="列出几道，默认 10")
     p.add_argument("-d", metavar="难度", help="只看某个难度：easy / medium / hard（或 简单 / 中等 / 困难）")
-    p.add_argument("-t", metavar="题型", help="只看某个题型，如 双指针；按包含匹配，二叉 会同时匹配 二叉树 和 二叉搜索树")
+    p.add_argument("-t", metavar="题型", help="只看某个题型，中英文都行（如 双指针 或 two pointers）；按包含匹配，tree 会同时匹配 二叉树 和 二叉搜索树")
     p.set_defaults(func=cmd_next)
 
     p = sub.add_parser("list", help="按难度、再按题型分组列出还没做的题")
     p.add_argument("-d", metavar="难度", help="只看某个难度：easy / medium / hard（或 简单 / 中等 / 困难）")
-    p.add_argument("-t", metavar="题型", help="只看某个题型，按包含匹配")
+    p.add_argument("-t", metavar="题型", help="只看某个题型，中英文都行；按包含匹配")
     p.add_argument("--plan", metavar="题单", help="只看某个题单里的题，如 top")
     p.add_argument("--all", action="store_true", help="已做的题也列出来（打 ✓）")
     p.set_defaults(func=cmd_list)

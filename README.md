@@ -9,7 +9,7 @@ Requires Python 3.10+, standard library only.
 In plain terms: pick a problem that is due, solve it blind, reveal hints only when stuck, then archive it and compare with past attempts.
 
 ```bash
-python3 lc.py list -d medium -t 二叉   # unsolved problems by difficulty, then by type
+python3 lc.py list -d medium -t tree   # unsolved problems by difficulty, then by type
 python3 lc.py next -d easy             # problems most due for a redo
 python3 lc.py plan top                 # problems in a list that are not done yet
 python3 lc.py start 42                 # blank practice file: signature only (same as redo)
@@ -24,11 +24,13 @@ Hints come in five layers, one per call:
 
 | Layer | Shows |
 | ----- | ----- |
-| 1 | 题型 — the problem type |
-| 2 | 识别信号 — what in the statement points to that type |
-| 3 | 解题步骤 — brute force, its bottleneck, and how each optimisation removes it |
-| 4 | 关键一步 — the one idea the optimal solution hinges on |
+| 1 | Type: the technique the problem calls for |
+| 2 | Recognition signals: what in the statement points to that technique |
+| 3 | Steps: brute force, its bottleneck, and how each optimisation removes it |
+| 4 | Key idea: the one idea the optimal solution hinges on |
 | 5 | The best archived attempt |
+
+The notes themselves are written in Chinese.
 
 Archiving runs the tests again, prints every past attempt's speed on the large input next to this one, asks whether this attempt reached the optimal solution in one go, and prints the notes for review. Every archived redo adds a row to `history.csv` with the date, minutes spent, hint layers used and the optimal answer.
 
@@ -47,7 +49,7 @@ Archiving runs the tests again, prints every past attempt's speed on the large i
 | `python3 lc.py check [problem]` | Tests every archived attempt (all problems when none is named) |
 | `python3 lc.py index` | Regenerates `REVIEW.md` from the notes |
 
-`<problem>` is a number (`42`) or part of the folder name (`trapping`). A difficulty is `easy`, `medium` or `hard` (or 简单, 中等, 困难); a type matches any 题型 tag that contains it, so `二叉` covers both 二叉树 and 二叉搜索树.
+`<problem>` is a number (`42`) or part of the folder name (`trapping`). A difficulty is `easy`, `medium` or `hard`. A type is matched by substring against each problem's type tags, in English or in the notes' Chinese, ignoring case: `tree` covers both binary tree and binary search tree, and `dp` covers dynamic programming. `REVIEW.md` lists every type in use.
 
 ## Review schedule
 
@@ -59,7 +61,7 @@ In plain terms: a problem comes back for a redo after 3 days; each consecutive r
 
 | Path | Contents |
 | ---- | -------- |
-| `problems/<number>_<name>/notes.md` | Study notes: 题型, 识别信号, 解题步骤, 关键一步, 各版本 (one row per attempt with idea, complexity and verdict), 易错点; the header names the 最优解 file |
+| `problems/<number>_<name>/notes.md` | Study notes: type, recognition signals, steps, key idea, versions (one row per attempt with idea, complexity and verdict) and pitfalls; the header names the best attempt file |
 | `problems/<number>_<name>/cases.py` | Sample inputs with expected outputs, plus an optional large input |
 | `problems/<number>_<name>/YYmmDD.py` | One file per attempt, named by date; a second attempt on the same day is `YYmmDD_2.py` |
 | `problems/<number>_<name>/YYmmDD.java`, `.js` | Earlier Java and JavaScript attempts; kept for reference and not run by the tool |
