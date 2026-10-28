@@ -41,3 +41,6 @@ pip-delete-this-directory.txt
 
 # Mac system tempfile
 .DS_Store
+
+# In-progress practice attempts
+practice/
