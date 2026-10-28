@@ -18,7 +18,10 @@ To set up the `lc` alias on a new machine, run this once after cloning, then ope
 python3 lc.py setup
 ```
 
-It adds `alias lc="python3 <this repo>/lc.py"` to `~/.zshrc` (zsh) or `~/.bash_profile` / `~/.bashrc` (bash), using wherever the repo was cloned. Running it again changes nothing, and it updates the path if the repo has moved. It leaves an existing `lc` alias that points elsewhere untouched; for other shells it prints the line to add by hand.
+It does two things:
+
+- Sets this repo's own git identity to Renee Lu <reneelu419@gmail.com> and signs commits with the SSH key `~/.ssh/id_celestia` (the key this repo is pushed with), so commits never pick up a global work identity. If that key is missing it says so and leaves git untouched.
+- Adds `alias lc="python3 <this repo>/lc.py"` to `~/.zshrc` (zsh) or `~/.bash_profile` / `~/.bashrc` (bash), using wherever the repo was cloned. Running it again changes nothing, and it updates the path if the repo has moved. It leaves an existing `lc` alias that points elsewhere untouched; for other shells it prints the line to add by hand.
 
 The menu shows the current round and the practice area, and offers: practise by difficulty and then type, start a given problem, test, hint, archive, problems due for a redo, list progress, start a new round, add a problem outside the lists, check every archived attempt, and rebuild `REVIEW.md`. Practising by type, the redo list and list progress each end by asking for a problem number to start right away. `0`, Ctrl-D or Ctrl-C leaves the menu.
 
@@ -73,7 +76,7 @@ Archiving runs the tests again, prints every past attempt's speed on the large i
 | `python3 lc.py next [-n 10] [-d level] [-t type]` | Lists the problems most due for a redo |
 | `python3 lc.py check [problem]` | Tests every archived attempt (all problems when none is named) |
 | `python3 lc.py index` | Regenerates `REVIEW.md` from the notes |
-| `python3 lc.py setup` | Adds the `lc` alias to the shell's startup file (run once per machine) |
+| `python3 lc.py setup` | Sets this repo's git identity and celestia SSH signing, and adds the `lc` alias (run once per machine) |
 
 `<problem>` is a number (`42`) or part of the folder name (`trapping`). A difficulty is `easy`, `medium` or `hard`. A type is matched against each problem's type tags, in English or in the notes' Chinese, ignoring case: a full type name matches only that type (`sorting` does not include topological sort), and anything else matches by substring (`tree` covers both binary tree and binary search tree). `REVIEW.md` lists every type in use.
 

@@ -14,6 +14,7 @@ import json
 import os
 import re
 import signal
+import subprocess
 import sys
 import textwrap
 import time
@@ -906,6 +907,8 @@ def cmd_plan(args):
 
 
 ALIAS_COMMENT = "# LeetCode practice menu (added by `python3 lc.py setup`)"
+GIT_NAME = "Renee Lu"
+GIT_EMAIL = "reneelu419@gmail.com"
 
 
 def shell_rc_file():
@@ -919,7 +922,26 @@ def shell_rc_file():
     return None
 
 
+def setup_git_signing() -> int:
+    """Repo-local commit identity and SSH signing with the celestia key, so commits never use a global work identity."""
+    key = Path.home() / ".ssh" / "id_celestia.pub"
+    if not key.exists():
+        print(f"没找到 {key}：先把 celestia 的 SSH key 放到 ~/.ssh/ 再运行 setup，否则提交会用全局的 git 身份")
+        return 1
+    signers = ROOT / ".git" / "allowed_signers"
+    signers.write_text(f"{GIT_EMAIL} {key.read_text().strip()}\n", encoding="utf-8")
+    settings = {
+        "user.name": GIT_NAME, "user.email": GIT_EMAIL, "gpg.format": "ssh", "user.signingkey": str(key),
+        "commit.gpgsign": "true", "gpg.ssh.allowedSignersFile": str(signers),
+    }
+    for name, value in settings.items():
+        subprocess.run(["git", "-C", str(ROOT), "config", "--local", name, value], check=True)
+    print(f"已设置本仓库的 git 身份: {GIT_NAME} <{GIT_EMAIL}>，提交用 {key.name} 签名")
+    return 0
+
+
 def cmd_setup(args):
+    git_result = setup_git_signing()
     alias = f'alias lc="python3 {ROOT / "lc.py"}"'
     rc = shell_rc_file()
     if rc is None:
@@ -933,7 +955,7 @@ def cmd_setup(args):
         return 1
     if ours and lines[ours[0]].strip() == alias:
         print(f"{rc} 里已经配好了: {alias}")
-        return 0
+        return git_result
     if ours:
         lines[ours[0]] = alias
         action = "已更新"
@@ -942,7 +964,7 @@ def cmd_setup(args):
         action = "已添加"
     rc.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"{action} {rc}: {alias}\n新开一个终端，或运行 source {rc}，然后输入 lc 即可")
-    return 0
+    return git_result
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -994,7 +1016,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("index", help="根据各题笔记生成按题型分组的 REVIEW.md")
     p.set_defaults(func=cmd_index)
 
-    p = sub.add_parser("setup", help="新电脑上 clone 之后运行一次：在 shell 启动文件里配好 lc 别名")
+    p = sub.add_parser("setup", help="新电脑上 clone 之后运行一次：配好 lc 别名，以及本仓库的 git 身份和 celestia 签名")
     p.set_defaults(func=cmd_setup)
 
     p = sub.add_parser("plan", help="题单进度：按分组列出还没做的题")
