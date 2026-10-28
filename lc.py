@@ -39,6 +39,9 @@ BASE_INTERVAL_DAYS = 3  # review interval after a non-clean attempt; doubles per
 HISTORY_FIELDS = ["date", "problem", "minutes", "hints", "optimal"]
 VERSION_TABLE_HEADER = ["| 文件 | 思路 | 时间 | 空间 | 结论 |", "| --- | --- | --- | --- | --- |"]
 PENDING = "待填"
+DIFFICULTIES = {"Easy": "简单", "Medium": "中等", "Hard": "困难"}
+UNRATED = "未标难度"
+UNTAGGED = "未分类"
 TYPING_NAMES = {"List", "Optional", "Dict", "Set", "Tuple", "Deque"}
 NODE_NAMES = {"ListNode", "TreeNode"}
 
@@ -672,13 +675,42 @@ def cmd_done(args):
     print(f"记得在 {rel(problem.notes_path)} 的「各版本」表里补全 {dest.name} 这一行")
 
 
+def problem_tags(notes: dict) -> list:
+    tags = [t.strip() for t in re.split(r"[·、,，/]", notes["sections"].get("题型", "")) if t.strip()]
+    return [t for t in tags if t != PENDING]
+
+
+def problem_difficulty(notes: dict) -> str:
+    value = notes["meta"].get("难度", "").strip().title()
+    return value if value in DIFFICULTIES else UNRATED
+
+
+def wanted_difficulty(value):
+    """Maps an -d argument (English or Chinese) to Easy / Medium / Hard."""
+    if value is None:
+        return None
+    for name, label in DIFFICULTIES.items():
+        if value.strip().lower() in (name.lower(), label):
+            return name
+    die(f"难度只能是 easy / medium / hard（或 简单 / 中等 / 困难），收到「{value}」")
+
+
+def passes_filters(notes: dict, difficulty, tag) -> bool:
+    if difficulty and problem_difficulty(notes) != difficulty:
+        return False
+    return not tag or any(tag in t for t in problem_tags(notes))
+
+
 def cmd_next(args):
+    difficulty = wanted_difficulty(args.d)
     by_problem = {}
     for row in read_history():
         by_problem.setdefault(row["problem"], []).append(row)
     today = date.today()
     ranked = []
     for problem in all_problems():
+        if not passes_filters(problem.notes(), difficulty, args.t):
+            continue
         records = by_problem.get(problem.key, [])
         if records:
             last = date.fromisoformat(records[-1]["date"])
@@ -720,8 +752,7 @@ def cmd_index(args):
     groups = {}
     for problem in all_problems():
         notes = problem.notes()
-        tags = [t.strip() for t in re.split(r"[·、,，/]", notes["sections"].get("题型", "")) if t.strip()]
-        for tag in [t for t in tags if t != PENDING] or ["未分类"]:
+        for tag in problem_tags(notes) or [UNTAGGED]:
             groups.setdefault(tag, []).append((problem, notes))
     lines = ["# 复习索引", "", "由 `python3 lc.py index` 根据各题 notes.md 生成，改笔记后重新运行即可。", ""]
     for tag in sorted(groups, key=lambda t: (-len(groups[t]), t)):
@@ -735,6 +766,43 @@ def cmd_index(args):
         lines.append("")
     REVIEW.write_text("\n".join(lines), encoding="utf-8")
     print(f"已更新 {rel(REVIEW)}：{len(groups)} 个题型")
+
+
+def cmd_list(args):
+    difficulty = wanted_difficulty(args.d)
+    plan_ids = None
+    if args.plan:
+        plans = [p for p in load_plans() if args.plan.lower() in p["slug"] or args.plan.lower() in p["name"].lower()]
+        if len(plans) != 1:
+            die(f"「{args.plan}」匹配到 {len(plans)} 个题单: {', '.join(p['slug'] for p in load_plans())}")
+        plan_ids = {str(q["id"]) for g in plans[0]["groups"] for q in g["problems"]}
+    groups = {}  # difficulty -> tag -> [(problem, notes, solved)]
+    for problem in all_problems():
+        notes = problem.notes()
+        solved = bool(problem.dated_files())
+        if (solved and not args.all) or (plan_ids is not None and problem.ref not in plan_ids):
+            continue
+        if not passes_filters(notes, difficulty, args.t):
+            continue
+        tags = [t for t in problem_tags(notes) if not args.t or args.t in t] or [UNTAGGED]
+        for tag in tags:
+            groups.setdefault(problem_difficulty(notes), {}).setdefault(tag, []).append((problem, notes, solved))
+    if not groups:
+        print("没有符合条件的题")
+        return 0
+    for level in [*DIFFICULTIES, UNRATED]:
+        by_tag = groups.get(level)
+        if not by_tag:
+            continue
+        distinct = {p.key for rows in by_tag.values() for p, _, _ in rows}
+        label = f"{DIFFICULTIES[level]} {level}" if level in DIFFICULTIES else level
+        print(f"\n{label}（{len(distinct)} 道）")
+        for tag in sorted(by_tag, key=lambda t: (-len(by_tag[t]), t)):
+            print(f"  {tag}（{len(by_tag[tag])}）")
+            for problem, notes, solved in by_tag[tag]:
+                print(f"    {'✓' if solved else '·'} {problem.ref:>5}  {notes['title'].split('. ', 1)[-1]}")
+    print("\n一道题有多个题型时，会在每个题型下各出现一次。开始一道题: python3 lc.py start <题号>")
+    return 0
 
 
 def load_plans() -> list:
@@ -796,7 +864,16 @@ def main(argv=None):
 
     p = sub.add_parser("next", help="按复习间隔列出最该重做的题")
     p.add_argument("-n", type=int, default=10, help="列出几道，默认 10")
+    p.add_argument("-d", metavar="难度", help="只看某个难度：easy / medium / hard（或 简单 / 中等 / 困难）")
+    p.add_argument("-t", metavar="题型", help="只看某个题型，如 双指针；按包含匹配，二叉 会同时匹配 二叉树 和 二叉搜索树")
     p.set_defaults(func=cmd_next)
+
+    p = sub.add_parser("list", help="按难度、再按题型分组列出还没做的题")
+    p.add_argument("-d", metavar="难度", help="只看某个难度：easy / medium / hard（或 简单 / 中等 / 困难）")
+    p.add_argument("-t", metavar="题型", help="只看某个题型，按包含匹配")
+    p.add_argument("--plan", metavar="题单", help="只看某个题单里的题，如 top")
+    p.add_argument("--all", action="store_true", help="已做的题也列出来（打 ✓）")
+    p.set_defaults(func=cmd_list)
 
     p = sub.add_parser("check", help="用样例检查已归档的全部解答")
     p.add_argument("problem", nargs="?", help="省略则检查所有题目")

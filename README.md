@@ -9,8 +9,9 @@ Requires Python 3.10+, standard library only.
 In plain terms: pick a problem that is due, solve it blind, reveal hints only when stuck, then archive it and compare with past attempts.
 
 ```bash
-python3 lc.py next       # problems most due for a redo
-python3 lc.py plan top   # problems in a list that are not done yet
+python3 lc.py list -d medium -t 二叉   # unsolved problems by difficulty, then by type
+python3 lc.py next -d easy             # problems most due for a redo
+python3 lc.py plan top                 # problems in a list that are not done yet
 python3 lc.py start 42   # blank practice file: signature only (same as redo)
 python3 lc.py test       # sample cases, then a large input for speed
 python3 lc.py hint       # reveal the next hint layer
@@ -41,11 +42,12 @@ Archiving runs the tests again, prints every past attempt's speed on the large i
 | `python3 lc.py test [problem]` | Tests practice-area attempts |
 | `python3 lc.py hint [problem]` | Reveals the next hint layer |
 | `python3 lc.py done [problem] [--optimal yes\|no]` | Archives a passing attempt; the flag skips the question |
-| `python3 lc.py next [-n 10]` | Lists the problems most due for a redo |
+| `python3 lc.py list [-d level] [-t type] [--plan name] [--all]` | Unsolved problems grouped by difficulty, then by type (a problem with several types appears under each); `--all` adds solved ones |
+| `python3 lc.py next [-n 10] [-d level] [-t type]` | Lists the problems most due for a redo |
 | `python3 lc.py check [problem]` | Tests every archived attempt (all problems when none is named) |
 | `python3 lc.py index` | Regenerates `REVIEW.md` from the notes |
 
-`<problem>` is a number (`42`) or part of the folder name (`trapping`).
+`<problem>` is a number (`42`) or part of the folder name (`trapping`). A difficulty is `easy`, `medium` or `hard` (or 简单, 中等, 困难); a type matches any 题型 tag that contains it, so `二叉` covers both 二叉树 and 二叉搜索树.
 
 ## Review schedule
 
