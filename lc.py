@@ -29,6 +29,9 @@ STATE_FILE = PRACTICE / ".state.json"
 HISTORY = ROOT / "history.csv"
 REVIEW = ROOT / "REVIEW.md"
 PLANS = ROOT / "plans"
+ROUND_FILE = ROOT / "round.json"
+STATUS_MARK = {"round": "✓", "old": "○", "new": "·"}
+STATUS_LEGEND = "✓ 本轮已做   ○ 以前做过、本轮还没做   · 从没做过"
 
 # Hint layers in reveal order; the layer after the last section prints the reference attempt.
 HINT_SECTIONS = ["题型", "识别信号", "解题步骤", "关键一步"]
@@ -794,28 +797,63 @@ def cmd_index(args):
     print(f"已更新 {rel(REVIEW)}：{len(groups)} 个题型")
 
 
+def round_start():
+    """Start date of the current practice round, or None when no round has been started."""
+    if not ROUND_FILE.exists():
+        return None
+    return date.fromisoformat(json.loads(ROUND_FILE.read_text(encoding="utf-8"))["start"])
+
+
+def problem_status(problem: Problem, start) -> str:
+    """'round' if an attempt was archived on or after the round start, 'old' if only before it, else 'new'.
+
+    Without a round, any archived attempt counts as 'round'.
+    """
+    dates = [d for d in map(attempt_date, problem.dated_files()) if d]
+    if any(start is None or d >= start for d in dates):
+        return "round"
+    return "old" if dates else "new"
+
+
+def round_summary(start) -> str:
+    if start is None:
+        return "本轮: 还没开始（在菜单里选「开始新一轮」）"
+    done = sum(problem_status(p, start) == "round" for p in all_problems())
+    return f"本轮: {start} 开始，已做 {done} 道"
+
+
+def cmd_round(args):
+    if args.new:
+        ROUND_FILE.write_text(json.dumps({"start": date.today().isoformat()}) + "\n", encoding="utf-8")
+        print(f"已开始新一轮: {date.today()}。之前做过的题都标成「以前做过」，会重新出现在 list 和刷题菜单里")
+    print(round_summary(round_start()))
+    return 0
+
+
 def cmd_list(args):
     difficulty = wanted_difficulty(args.d)
+    start = round_start()
     plan_ids = None
     if args.plan:
         plans = [p for p in load_plans() if args.plan.lower() in p["slug"] or args.plan.lower() in p["name"].lower()]
         if len(plans) != 1:
             die(f"「{args.plan}」匹配到 {len(plans)} 个题单: {', '.join(p['slug'] for p in load_plans())}")
         plan_ids = {str(q["id"]) for g in plans[0]["groups"] for q in g["problems"]}
-    groups = {}  # difficulty -> tag -> [(problem, notes, solved)]
+    groups = {}  # difficulty -> tag -> [(problem, notes, status)]
+    hidden = set()
     for problem in all_problems():
         notes = problem.notes()
-        solved = bool(problem.dated_files())
-        if (solved and not args.all) or (plan_ids is not None and problem.ref not in plan_ids):
+        if plan_ids is not None and problem.ref not in plan_ids:
             continue
         if not passes_filters(notes, difficulty, args.t):
             continue
+        status = problem_status(problem, start)
+        if status == "round" and not args.all:
+            hidden.add(problem.key)
+            continue
         tags = [t for t in problem_tags(notes) if not args.t or tag_matches(t, args.t)] or [UNTAGGED]
         for tag in tags:
-            groups.setdefault(problem_difficulty(notes), {}).setdefault(tag, []).append((problem, notes, solved))
-    if not groups:
-        print("没有符合条件的题")
-        return 0
+            groups.setdefault(problem_difficulty(notes), {}).setdefault(tag, []).append((problem, notes, status))
     for level in [*DIFFICULTIES, UNRATED]:
         by_tag = groups.get(level)
         if not by_tag:
@@ -825,9 +863,13 @@ def cmd_list(args):
         print(f"\n{label}（{len(distinct)} 道）")
         for tag in sorted(by_tag, key=lambda t: (-len(by_tag[t]), t)):
             print(f"  {tag}（{len(by_tag[tag])}）")
-            for problem, notes, solved in by_tag[tag]:
-                print(f"    {'✓' if solved else '·'} {problem.ref:>5}  {notes['title'].split('. ', 1)[-1]}")
-    print("\n一道题有多个题型时，会在每个题型下各出现一次。开始一道题: python3 lc.py start <题号>")
+            for problem, notes, status in by_tag[tag]:
+                print(f"    {STATUS_MARK[status]} {problem.ref:>5}  {notes['title'].split('. ', 1)[-1]}")
+    if not groups:
+        print("没有符合条件的题")
+    if hidden:
+        print(f"\n本轮已做的 {len(hidden)} 道没有列出（加 --all 显示）")
+    print(f"\n{STATUS_LEGEND}。一道题有多个题型时，会在每个题型下各出现一次。开始一道题: python3 lc.py start <题号>")
     return 0
 
 
@@ -934,11 +976,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("-t", metavar="题型", help="只看某个题型，中英文都行（如 双指针 或 two pointers）；按包含匹配，tree 会同时匹配 二叉树 和 二叉搜索树")
     p.set_defaults(func=cmd_next)
 
-    p = sub.add_parser("list", help="按难度、再按题型分组列出还没做的题")
+    p = sub.add_parser("round", help="看本轮进度；加 --new 开始新一轮")
+    p.add_argument("--new", action="store_true", help="从今天开始新一轮")
+    p.set_defaults(func=cmd_round)
+
+    p = sub.add_parser("list", help="按难度、再按题型分组列出本轮还没做的题（新题和以前做过的都在）")
     p.add_argument("-d", metavar="难度", help="只看某个难度：easy / medium / hard（或 简单 / 中等 / 困难）")
     p.add_argument("-t", metavar="题型", help="只看某个题型，中英文都行；按包含匹配")
     p.add_argument("--plan", metavar="题单", help="只看某个题单里的题，如 top")
-    p.add_argument("--all", action="store_true", help="已做的题也列出来（打 ✓）")
+    p.add_argument("--all", action="store_true", help="本轮已做的题也列出来（打 ✓）")
     p.set_defaults(func=cmd_list)
 
     p = sub.add_parser("check", help="用样例检查已归档的全部解答")
@@ -995,15 +1041,19 @@ def choose(title: str, options: list, allow_all: bool = True):
         print("  没有这个编号，再选一次")
 
 
-def unsolved_tag_counts(difficulty) -> list:
-    counts = {}
+def round_tag_counts(difficulty) -> list:
+    """[(tag, done this round, total)] for the difficulty, most remaining first."""
+    start, counts = round_start(), {}
     for problem in all_problems():
         notes = problem.notes()
-        if problem.dated_files() or not passes_filters(notes, difficulty, None):
+        if not passes_filters(notes, difficulty, None):
             continue
+        done = problem_status(problem, start) == "round"
         for tag in problem_tags(notes) or [UNTAGGED]:
-            counts[tag] = counts.get(tag, 0) + 1
-    return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+            pair = counts.setdefault(tag, [0, 0])
+            pair[0] += done
+            pair[1] += 1
+    return sorted(((t, d, n) for t, (d, n) in counts.items()), key=lambda x: (-(x[2] - x[1]), x[0]))
 
 
 def offer_start():
@@ -1016,15 +1066,21 @@ def choose_difficulty():
     return choose("难度", [(f"{label} {name}", name.lower()) for name, label in DIFFICULTIES.items()])
 
 
-def menu_pick_new():
+def menu_practice():
     difficulty = choose_difficulty()
-    counts = unsolved_tag_counts(wanted_difficulty(difficulty))
+    counts = round_tag_counts(wanted_difficulty(difficulty))
     if not counts:
-        print("这个难度下没有还没做的题")
+        print("这个难度下没有题")
         return
-    tag = choose("题型（括号里是还没做的题数）", [(f"{t}（{n}）", t) for t, n in counts])
+    tag = choose("题型（括号里是本轮已做 / 总数）", [(f"{t}（{d}/{n}）", t) for t, d, n in counts])
     run(["list"] + (["-d", difficulty] if difficulty else []) + (["-t", tag] if tag else []))
     offer_start()
+
+
+def menu_new_round():
+    print(round_summary(round_start()))
+    if ask("开始新一轮？之前做过的题会重新算作本轮没做 [y/N]: ").lower() in ("y", "yes"):
+        run(["round", "--new"])
 
 
 def menu_start():
@@ -1068,13 +1124,14 @@ def menu_new():
 
 
 MENU = [
-    ("选新题：按难度 → 题型", menu_pick_new),
-    ("开始做一道题（输入题号）", menu_start),
+    ("刷题：按难度 → 题型选（新题和做过的题都在，本轮做过的不列）", menu_practice),
+    ("开始做指定的题（输入题号）", menu_start),
     ("测试练习区的解答", lambda: menu_on_practice("test")),
     ("要一层提示", lambda: menu_on_practice("hint")),
     ("归档并复盘", lambda: menu_on_practice("done")),
-    ("复习：最该重做的题", menu_next),
+    ("复习：按遗忘间隔排出最该重做的题", menu_next),
     ("题单进度", menu_plan),
+    ("开始新一轮", menu_new_round),
     ("新建题单以外的题", menu_new),
     ("检查全部已归档的解答", lambda: run(["check"])),
     ("重新生成复习索引 REVIEW.md", lambda: run(["index"])),
@@ -1087,6 +1144,7 @@ def menu():
             state = load_state()
             current = practicing()
             print("\n══ LeetCode 刷题 ══")
+            print(round_summary(round_start()))
             if current:
                 for p in current:
                     hints = state.get(p.key, {}).get("hints", 0)
