@@ -51,7 +51,7 @@ TAG_ENGLISH = {
     "二叉树": "binary tree", "二叉搜索树": "binary search tree", "递归": "recursion",
     "分治": "divide and conquer", "回溯": "backtracking", "DFS": "dfs", "BFS": "bfs", "图": "graph",
     "拓扑排序": "topological sort", "并查集": "union find", "字典树": "trie", "贪心": "greedy",
-    "动态规划": "dynamic programming dp", "区间": "intervals", "排序": "sorting",
+    "动态规划": "dynamic programming", "区间": "intervals", "排序": "sorting",
     "矩阵模拟": "matrix simulation", "字符串模拟": "string simulation", "数学": "math",
     "位运算": "bit manipulation", "设计": "design",
 }
@@ -391,7 +391,7 @@ def test_attempt(path: Path, cases, verbose: bool = True) -> dict:
             ok, detail = False, describe_error(e, path)
         ms = (time.perf_counter() - start) * 1000
         if not ok:
-            print(f"  ✗ 样例 {i}  输入 {short(case_args(case, cases))}  {detail}")
+            print(f"  ✗ 样例 {i}  输入 {short(normalize(case_args(case, cases), False))}  {detail}")
         elif verbose:
             print(f"  ✓ 样例 {i}  {ms:.2f}ms")
         passed += ok
@@ -708,10 +708,16 @@ def wanted_difficulty(value):
     die(f"难度只能是 easy / medium / hard（或 简单 / 中等 / 困难），收到「{value}」")
 
 
+EXACT_TAG_NAMES = {t.lower() for t in TAG_ENGLISH} | set(TAG_ENGLISH.values())
+
+
 def tag_matches(tag: str, query: str) -> bool:
-    """Substring match against the tag or its English name, ignoring case."""
+    """A full tag name (Chinese or English) matches only that tag; anything else matches by substring, ignoring case."""
     query = query.strip().lower()
-    return query in tag.lower() or query in TAG_ENGLISH.get(tag, "")
+    names = {tag.lower(), TAG_ENGLISH.get(tag, "")} - {""}
+    if query in EXACT_TAG_NAMES:
+        return query in names
+    return any(query in name for name in names)
 
 
 def passes_filters(notes: dict, difficulty, tag) -> bool:
@@ -856,8 +862,8 @@ def cmd_plan(args):
     return 0
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description="LeetCode 刷题工具：盲做重做、分层提示、归档复盘。")
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="LeetCode 刷题工具：盲做重做、分层提示、归档复盘。不带参数运行则进入菜单。")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("new", help="新题：建题目目录并在练习区生成空白文件")
@@ -906,8 +912,164 @@ def main(argv=None):
     p.add_argument("--all", action="store_true", help="已做的题也列出来")
     p.set_defaults(func=cmd_plan)
 
-    args = parser.parse_args(argv)
-    sys.exit(args.func(args) or 0)
+    return parser
+
+
+def run(argv: list) -> int:
+    """Runs one command; errors that would exit the program return their exit code instead."""
+    try:
+        args = build_parser().parse_args(argv)
+        return args.func(args) or 0
+    except SystemExit as e:
+        return e.code if isinstance(e.code, int) else 1
+
+
+class MenuExit(Exception):
+    """Raised on 0, Ctrl-D or Ctrl-C to leave the menu."""
+
+
+def ask(prompt: str) -> str:
+    try:
+        return input(prompt).strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        raise MenuExit()
+
+
+def choose(title: str, options: list, allow_all: bool = True):
+    """Numbered pick from options [(label, value)]; Enter means all (None) when allowed."""
+    print(f"\n{title}:")
+    for i, (label, _) in enumerate(options, 1):
+        print(f"  {i:>2}. {label}")
+    hint = "（回车 = 全部）" if allow_all else ""
+    while True:
+        answer = ask(f"选择编号{hint}: ")
+        if not answer and allow_all:
+            return None
+        if answer.isdigit() and 1 <= int(answer) <= len(options):
+            return options[int(answer) - 1][1]
+        print("  没有这个编号，再选一次")
+
+
+def unsolved_tag_counts(difficulty) -> list:
+    counts = {}
+    for problem in all_problems():
+        notes = problem.notes()
+        if problem.dated_files() or not passes_filters(notes, difficulty, None):
+            continue
+        for tag in problem_tags(notes) or [UNTAGGED]:
+            counts[tag] = counts.get(tag, 0) + 1
+    return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+
+
+def offer_start():
+    answer = ask("\n输入题号开始做（回车返回菜单）: ")
+    if answer:
+        run(["start", answer])
+
+
+def choose_difficulty():
+    return choose("难度", [(f"{label} {name}", name.lower()) for name, label in DIFFICULTIES.items()])
+
+
+def menu_pick_new():
+    difficulty = choose_difficulty()
+    counts = unsolved_tag_counts(wanted_difficulty(difficulty))
+    if not counts:
+        print("这个难度下没有还没做的题")
+        return
+    tag = choose("题型（括号里是还没做的题数）", [(f"{t}（{n}）", t) for t, n in counts])
+    run(["list"] + (["-d", difficulty] if difficulty else []) + (["-t", tag] if tag else []))
+    offer_start()
+
+
+def menu_start():
+    answer = ask("题号或题名片段: ")
+    if answer:
+        run(["start", answer])
+
+
+def menu_on_practice(command: str):
+    current = practicing()
+    if not current:
+        print("练习区是空的，先选一道题开始做")
+        return
+    target = current[0] if len(current) == 1 else choose(
+        "练习区里有几道题，选一道", [(p.notes()["title"], p) for p in current], allow_all=False)
+    run([command, target.ref])
+
+
+def menu_next():
+    difficulty = choose_difficulty()
+    tag = ask("题型（中英文都行，回车 = 全部）: ")
+    run(["next"] + (["-d", difficulty] if difficulty else []) + (["-t", tag] if tag else []))
+    offer_start()
+
+
+def menu_plan():
+    plans = load_plans()
+    if not plans:
+        print("plans/ 里还没有题单")
+        return
+    slug = plans[0]["slug"] if len(plans) == 1 else choose(
+        "题单", [(p["name"], p["slug"]) for p in plans], allow_all=False)
+    run(["plan", slug])
+    offer_start()
+
+
+def menu_new():
+    title = ask('题目（如 "42. Trapping Rain Water"）: ')
+    if title:
+        run(["new", title])
+
+
+MENU = [
+    ("选新题：按难度 → 题型", menu_pick_new),
+    ("开始做一道题（输入题号）", menu_start),
+    ("测试练习区的解答", lambda: menu_on_practice("test")),
+    ("要一层提示", lambda: menu_on_practice("hint")),
+    ("归档并复盘", lambda: menu_on_practice("done")),
+    ("复习：最该重做的题", menu_next),
+    ("题单进度", menu_plan),
+    ("新建题单以外的题", menu_new),
+    ("检查全部已归档的解答", lambda: run(["check"])),
+    ("重新生成复习索引 REVIEW.md", lambda: run(["index"])),
+]
+
+
+def menu():
+    try:
+        while True:
+            state = load_state()
+            current = practicing()
+            print("\n══ LeetCode 刷题 ══")
+            if current:
+                for p in current:
+                    hints = state.get(p.key, {}).get("hints", 0)
+                    print(f"练习区: {p.notes()['title']}（已用 {hints} 层提示）  {rel(practice_file(p))}")
+            else:
+                print("练习区: 空")
+            for i, (label, _) in enumerate(MENU, 1):
+                print(f"  {i:>2}. {label}")
+            print("   0. 退出")
+            answer = ask("选择编号: ")
+            if answer == "0":
+                return
+            if not answer.isdigit() or not 1 <= int(answer) <= len(MENU):
+                print("没有这个编号")
+                continue
+            MENU[int(answer) - 1][1]()
+            ask("\n回车返回菜单")
+    except MenuExit:
+        return
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv:
+        menu()
+        return
+    sys.exit(run(argv))
 
 
 if __name__ == "__main__":

@@ -4,9 +4,20 @@ In plain terms: every problem lives in its own folder with its test cases, study
 
 Requires Python 3.10+, standard library only.
 
+## Menu
+
+In plain terms: run the tool with no arguments to get a numbered menu; each entry asks for what it needs, so no command has to be remembered.
+
+```bash
+python3 lc.py     # or just `lc`, with this line in ~/.zshrc:
+                  # alias lc="python3 /Users/renee.lu/Project/leetcode/lc.py"
+```
+
+The menu shows what is in the practice area and offers: pick a new problem by difficulty and then type, start a problem, test, hint, archive, problems due for a redo, list progress, add a problem outside the lists, check every archived attempt, and rebuild `REVIEW.md`. Picking a new problem, the redo list and list progress each end by asking for a problem number to start right away. `0`, Ctrl-D or Ctrl-C leaves the menu.
+
 ## Daily loop
 
-In plain terms: pick a problem that is due, solve it blind, reveal hints only when stuck, then archive it and compare with past attempts.
+In plain terms: pick a problem that is due, solve it blind, reveal hints only when stuck, then archive it and compare with past attempts. Every menu entry is one of these commands, which also work directly.
 
 ```bash
 python3 lc.py list -d medium -t tree   # unsolved problems by difficulty, then by type
@@ -49,7 +60,7 @@ Archiving runs the tests again, prints every past attempt's speed on the large i
 | `python3 lc.py check [problem]` | Tests every archived attempt (all problems when none is named) |
 | `python3 lc.py index` | Regenerates `REVIEW.md` from the notes |
 
-`<problem>` is a number (`42`) or part of the folder name (`trapping`). A difficulty is `easy`, `medium` or `hard`. A type is matched by substring against each problem's type tags, in English or in the notes' Chinese, ignoring case: `tree` covers both binary tree and binary search tree, and `dp` covers dynamic programming. `REVIEW.md` lists every type in use.
+`<problem>` is a number (`42`) or part of the folder name (`trapping`). A difficulty is `easy`, `medium` or `hard`. A type is matched against each problem's type tags, in English or in the notes' Chinese, ignoring case: a full type name matches only that type (`sorting` does not include topological sort), and anything else matches by substring (`tree` covers both binary tree and binary search tree). `REVIEW.md` lists every type in use.
 
 ## Review schedule
 
