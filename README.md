@@ -12,10 +12,10 @@ In plain terms: pick a problem that is due, solve it blind, reveal hints only wh
 python3 lc.py list -d medium -t 二叉   # unsolved problems by difficulty, then by type
 python3 lc.py next -d easy             # problems most due for a redo
 python3 lc.py plan top                 # problems in a list that are not done yet
-python3 lc.py start 42   # blank practice file: signature only (same as redo)
-python3 lc.py test       # sample cases, then a large input for speed
-python3 lc.py hint       # reveal the next hint layer
-python3 lc.py done       # archive, compare with past attempts, review the notes
+python3 lc.py start 42                 # blank practice file: signature only (same as redo)
+python3 lc.py test                     # sample cases, then a large input for speed
+python3 lc.py hint                     # reveal the next hint layer
+python3 lc.py done                     # archive, compare with past attempts, review the notes
 ```
 
 The problem number can be left out of `test`, `hint` and `done` while only one problem is in the practice area.
@@ -53,7 +53,7 @@ Archiving runs the tests again, prints every past attempt's speed on the large i
 
 In plain terms: a problem comes back for a redo after 3 days; each consecutive redo done with no hints and at the optimal complexity doubles that gap, and any other redo resets it.
 
-`next` ranks problems by days since the last attempt divided by the current gap. A problem that has never been redone counts from the date of its latest archived attempt.
+`next` ranks problems by days since the last attempt divided by the current gap. A problem that has never been redone counts from the date of its latest archived attempt. Problems never solved are not in `next`; `list` and `plan` show those.
 
 ## Layout
 
