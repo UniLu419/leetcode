@@ -9,9 +9,16 @@ Requires Python 3.10+, standard library only.
 In plain terms: run the tool with no arguments to get a numbered menu; each entry asks for what it needs, so no command has to be remembered.
 
 ```bash
-python3 lc.py     # or just `lc`, with this line in ~/.zshrc:
-                  # alias lc="python3 /Users/renee.lu/Project/leetcode/lc.py"
+python3 lc.py     # or just `lc` once the alias is set up
 ```
+
+To set up the `lc` alias on a new machine, run this once after cloning, then open a new terminal:
+
+```bash
+python3 lc.py setup
+```
+
+It adds `alias lc="python3 <this repo>/lc.py"` to `~/.zshrc` (zsh) or `~/.bash_profile` / `~/.bashrc` (bash), using wherever the repo was cloned. Running it again changes nothing, and it updates the path if the repo has moved. It leaves an existing `lc` alias that points elsewhere untouched; for other shells it prints the line to add by hand.
 
 The menu shows what is in the practice area and offers: pick a new problem by difficulty and then type, start a problem, test, hint, archive, problems due for a redo, list progress, add a problem outside the lists, check every archived attempt, and rebuild `REVIEW.md`. Picking a new problem, the redo list and list progress each end by asking for a problem number to start right away. `0`, Ctrl-D or Ctrl-C leaves the menu.
 
@@ -59,6 +66,7 @@ Archiving runs the tests again, prints every past attempt's speed on the large i
 | `python3 lc.py next [-n 10] [-d level] [-t type]` | Lists the problems most due for a redo |
 | `python3 lc.py check [problem]` | Tests every archived attempt (all problems when none is named) |
 | `python3 lc.py index` | Regenerates `REVIEW.md` from the notes |
+| `python3 lc.py setup` | Adds the `lc` alias to the shell's startup file (run once per machine) |
 
 `<problem>` is a number (`42`) or part of the folder name (`trapping`). A difficulty is `easy`, `medium` or `hard`. A type is matched against each problem's type tags, in English or in the notes' Chinese, ignoring case: a full type name matches only that type (`sorting` does not include topological sort), and anything else matches by substring (`tree` covers both binary tree and binary search tree). `REVIEW.md` lists every type in use.
 

@@ -11,6 +11,7 @@ import csv
 import importlib.util
 import itertools
 import json
+import os
 import re
 import signal
 import sys
@@ -862,6 +863,46 @@ def cmd_plan(args):
     return 0
 
 
+ALIAS_COMMENT = "# LeetCode practice menu (added by `python3 lc.py setup`)"
+
+
+def shell_rc_file():
+    """The startup file of the user's login shell, or None when the shell is not zsh or bash."""
+    shell = Path(os.environ.get("SHELL", "")).name
+    home = Path.home()
+    if shell == "zsh":
+        return home / ".zshrc"
+    if shell == "bash":
+        return home / (".bash_profile" if sys.platform == "darwin" else ".bashrc")
+    return None
+
+
+def cmd_setup(args):
+    alias = f'alias lc="python3 {ROOT / "lc.py"}"'
+    rc = shell_rc_file()
+    if rc is None:
+        print(f"没认出你的 shell（$SHELL={os.environ.get('SHELL', '')}），请把这一行加进它的启动文件:\n{alias}")
+        return 1
+    lines = rc.read_text(encoding="utf-8").splitlines() if rc.exists() else []
+    existing = [i for i, line in enumerate(lines) if re.match(r"\s*alias lc=", line)]
+    ours = [i for i in existing if "lc.py" in lines[i]]
+    if existing and not ours:
+        print(f"{rc} 里已经有一个别的 lc 别名: {lines[existing[0]].strip()}\n没有改动；想换成这个工具的话，把那行改成:\n{alias}")
+        return 1
+    if ours and lines[ours[0]].strip() == alias:
+        print(f"{rc} 里已经配好了: {alias}")
+        return 0
+    if ours:
+        lines[ours[0]] = alias
+        action = "已更新"
+    else:
+        lines += ["", ALIAS_COMMENT, alias]
+        action = "已添加"
+    rc.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"{action} {rc}: {alias}\n新开一个终端，或运行 source {rc}，然后输入 lc 即可")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="LeetCode 刷题工具：盲做重做、分层提示、归档复盘。不带参数运行则进入菜单。")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -906,6 +947,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("index", help="根据各题笔记生成按题型分组的 REVIEW.md")
     p.set_defaults(func=cmd_index)
+
+    p = sub.add_parser("setup", help="新电脑上 clone 之后运行一次：在 shell 启动文件里配好 lc 别名")
+    p.set_defaults(func=cmd_setup)
 
     p = sub.add_parser("plan", help="题单进度：按分组列出还没做的题")
     p.add_argument("name", nargs="?", help="题单名片段；省略则列出所有题单的进度")
