@@ -75,7 +75,8 @@ CASES_TEMPLATE = """\
 # 函数题: METHOD 填 Solution 里的方法名, CASES 每条写 dict(args=(参数, ...), expected=期望输出)。
 # 设计题: 删掉 METHOD, 写 CLASS = "类名", CASES 每条写 dict(ops=[...], args=[[...], ...], expected=[...])。
 # 可选: UNORDERED = True 忽略列表顺序; CHECK_ARG = 0 改为比较原地修改后的第 0 个参数;
-#       def check(output, expected) 自定义比较; def bench() 返回一组大输入参数, 用来比较各解法速度。
+#       def check(output, expected, args) 自定义比较（output 是原始返回值, args 是调用后的参数）;
+#       def bench() 返回一组大输入参数, 用来比较各解法速度。
 # 链表/树的参数用 helpers 里的 build_linked_list / build_tree 构造, 输出会自动转成 LeetCode 的列表写法。
 
 METHOD = ""
@@ -116,7 +117,12 @@ class Problem:
         return parse_notes(self.notes_path.read_text(encoding="utf-8"))
 
     def attempts(self) -> list:
+        """Python attempts; these are the ones the tool runs."""
         return sorted((p for p in self.path.glob("*.py") if p.name != "cases.py"), key=attempt_sort_key)
+
+    def dated_files(self) -> list:
+        """Attempts in every language (Python, Java, JavaScript), named by date."""
+        return sorted((p for p in self.path.iterdir() if attempt_date(p)), key=attempt_sort_key)
 
     def best_attempt(self):
         name = self.notes()["meta"].get("最优解", "")
@@ -124,9 +130,11 @@ class Problem:
         return path if path and path.is_file() else None
 
     def reference_attempt(self):
-        """Best attempt if the notes name one, else the latest attempt."""
-        attempts = self.attempts()
-        return self.best_attempt() or (attempts[-1] if attempts else None)
+        """Best attempt if the notes name a Python one, else the latest Python attempt."""
+        best, attempts = self.best_attempt(), self.attempts()
+        if best and best.suffix == ".py":
+            return best
+        return attempts[-1] if attempts else None
 
 
 def die(message: str):
@@ -307,9 +315,9 @@ def equal(a, b) -> bool:
     return a == b
 
 
-def matches(output, expected, cases) -> bool:
+def matches(output, expected, cases, args) -> bool:
     if hasattr(cases, "check"):
-        return bool(cases.check(normalize(output, False), expected))
+        return bool(cases.check(output, expected, args))
     unordered = getattr(cases, "UNORDERED", False)
     return equal(normalize(output, unordered), normalize(expected, unordered))
 
@@ -352,7 +360,7 @@ def test_attempt(path: Path, cases, verbose: bool = True) -> dict:
         start = time.perf_counter()
         try:
             output = call_with_timeout(lambda: run_target(module, cases, args), CASE_TIMEOUT)
-            ok = matches(output, case["expected"], cases)
+            ok = matches(output, case["expected"], cases, args)
             detail = "" if ok else f"期望 {short(case['expected'])}，实际 {short(normalize(output, False))}"
         except Timeout:
             ok, detail = False, f"超过 {CASE_TIMEOUT:g}s"
@@ -475,7 +483,8 @@ def cmd_hint(args):
             text = sections.get(name, "")
             print(text if text and text != PENDING else "（笔记里还没写）")
         else:
-            source = problem.reference_attempt()
+            dated = problem.dated_files()
+            source = problem.best_attempt() or problem.reference_attempt() or (dated[-1] if dated else None)
             print(f"── 提示 {i}/{MAX_HINT}  旧答案 {source.name if source else ''}")
             print(source.read_text(encoding="utf-8").rstrip() if source else "（还没有归档的解答）")
         print()
@@ -647,7 +656,7 @@ def cmd_next(args):
         if records:
             last = date.fromisoformat(records[-1]["date"])
         else:
-            dates = [d for d in map(attempt_date, problem.attempts()) if d]
+            dates = [d for d in map(attempt_date, problem.dated_files()) if d]
             if not dates:
                 continue
             last = max(dates)

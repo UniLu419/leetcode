@@ -58,13 +58,16 @@ In plain terms: a problem comes back for a redo after 3 days; each consecutive r
 | `problems/<number>_<name>/notes.md` | Study notes: 题型, 识别信号, 解题步骤, 关键一步, 各版本 (one row per attempt with idea, complexity and verdict), 易错点; the header names the 最优解 file |
 | `problems/<number>_<name>/cases.py` | Sample inputs with expected outputs, plus an optional large input |
 | `problems/<number>_<name>/YYmmDD.py` | One file per attempt, named by date; a second attempt on the same day is `YYmmDD_2.py` |
+| `problems/<number>_<name>/YYmmDD.java`, `.js` | Earlier Java and JavaScript attempts; kept for reference and not run by the tool |
+| `problems/booking_<name>/` | Interview problems without a LeetCode number, same layout |
 | `practice/` | Attempts in progress; not committed |
 | `history.csv` | One row per archived redo |
 | `REVIEW.md` | Generated review index grouped by problem type |
 | `helpers.py` | `ListNode`, `TreeNode` and converters to and from LeetCode's list notation |
+| `algorithms/` | Standalone algorithm practice (heap sort) |
 | `lc.py` | The command-line tool |
 
-Each attempt file is plain LeetCode code: it can be pasted into LeetCode after removing the `helpers` import, if any.
+Each Python attempt is plain LeetCode code: it can be pasted into LeetCode after removing the `helpers` import, if any.
 
 ## Test cases
 
@@ -82,7 +85,7 @@ CASES = [
 # Optional settings
 UNORDERED = True                     # compare lists ignoring order, at every level
 CHECK_ARG = 0                        # compare argument 0 after the call (in-place problems)
-def check(output, expected): ...     # custom comparison
+def check(output, expected, args): ...  # custom comparison: raw return value, arguments after the call
 def bench():                         # large input, timed with a 3 s limit
     return ([random.Random(0).randint(0, 10**4) for _ in range(100_000)],)
 ```
@@ -98,12 +101,4 @@ CASES = [
 
 Each sample case has a 2-second limit, so an infinite loop shows up as a failed case.
 
-## Problems not yet migrated
-
-Python files in the repository root are problems still in the old single-file format. Each one runs on its own and asks for a sample number:
-
-```bash
-python3 125_valid_palindrome.py
-```
-
-They use `custom_types.py`, `utils.py` and `timing_dec.py`. The Java and JavaScript files are standalone snippets.
+A problem whose only attempts are in Java or JavaScript still has Python test cases, so it can be redone in Python; its first redo starts from a blank class to paste LeetCode's template into.
