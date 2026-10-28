@@ -13,6 +13,7 @@ import itertools
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -28,8 +29,9 @@ PROBLEMS = ROOT / "problems"
 PRACTICE = ROOT / "practice"
 STATE_FILE = PRACTICE / ".state.json"
 HISTORY = ROOT / "history.csv"
-MISTAKES = ROOT / "mistakes.csv"
+MISTAKES_DIR = ROOT / "mistakes"
 MISTAKES_PAGE = ROOT / "MISTAKES.md"
+FAILS = PRACTICE / ".fails"
 REVIEW = ROOT / "REVIEW.md"
 PLANS = ROOT / "plans"
 ROUND_FILE = ROOT / "round.json"
@@ -44,7 +46,8 @@ CASE_TIMEOUT = 2.0  # seconds per sample case
 BENCH_TIMEOUT = 3.0  # seconds for the large input
 BASE_INTERVAL_DAYS = 3  # review interval after a non-clean attempt; doubles per consecutive clean attempt
 HISTORY_FIELDS = ["date", "problem", "minutes", "hints", "optimal"]
-MISTAKE_FIELDS = ["date", "problem", "category", "mistake", "fix"]
+MISTAKE_SECTIONS = ["错在哪", "正确写法", "知识点"]
+MAX_FAILING_VERSIONS = 5  # failing versions kept per attempt in practice/.fails, read when Claude records mistakes
 # Mistake categories with the English name `-c` also accepts.
 MISTAKE_CATEGORIES = {"Python 用法": "python", "边界情况": "edge", "思路": "idea", "粗心": "careless"}
 VERSION_TABLE_HEADER = ["| 文件 | 思路 | 时间 | 空间 | 结论 |", "| --- | --- | --- | --- | --- |"]
@@ -501,6 +504,7 @@ def start_practice(problem: Problem, body: str):
     PRACTICE.mkdir(exist_ok=True)
     path = practice_file(problem)
     path.write_text("\n".join(practice_header(problem)) + "\n" + body, encoding="utf-8")
+    clear_failing_versions(problem)
     state = load_state()
     state[problem.key] = {"start": datetime.now().isoformat(timespec="seconds"), "hints": 0}
     save_state(state)
@@ -575,6 +579,8 @@ def cmd_test(args):
         print(rel(path))
         result = test_attempt(path, cases, details=not args.brief)
         print(f"  {summary(result)}")
+        if not result["ok"]:
+            keep_failing_version(problem, path)
         all_ok &= result["ok"]
     return 0 if all_ok else 1
 
@@ -683,6 +689,7 @@ def cmd_done(args):
     result = test_attempt(path, cases)
     print(f"  {summary(result)}")
     if not result["ok"]:
+        keep_failing_version(problem, path)
         die("还没全部通过，修好再归档（卡住可以运行 hint）")
     compare_attempts(problem, cases, result)
     optimal = ask_optimal(args.optimal)
@@ -710,9 +717,11 @@ def cmd_done(args):
 
     print(f"\n已归档为 {rel(dest)}，用时 {minutes if minutes != '' else '?'} 分钟，用了 {hints} 层提示")
     if sys.stdin.isatty():
-        print("\n这次还有要记进错题本的错吗？（直接回车跳过）")
-        while prompt_mistake(problem):
-            print("\n还有吗？（直接回车结束）")
+        prompt = "\n这次有要记进错题本的错吗？回车跳过 / 1 在编辑器里写: "
+        while input(prompt).strip() == "1":
+            write_mistake(problem)
+            prompt = "\n还有吗？回车结束 / 1 再写一条: "
+    clear_failing_versions(problem)
     sections = problem.notes()["sections"]
     print("\n── 对照笔记复盘 ──")
     for name in REVIEW_SECTIONS:
@@ -721,34 +730,41 @@ def cmd_done(args):
     if own:
         print("[错题本里这道题的记录]")
         for m in own:
-            print(f"  {mistake_line(m)}")
+            print(f"  {m['date']}  {m['category']}")
+            print_mistake(m, indent="    ")
         print()
     print(f"记得在 {rel(problem.notes_path)} 的「各版本」表里补全 {dest.name} 这一行")
 
 
-def read_mistakes() -> list:
-    if not MISTAKES.exists():
-        return []
-    with MISTAKES.open(newline="", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
-
-
-def wanted_category(value):
-    """Maps a -c argument (Chinese or English, ignoring case) to a category name."""
-    if value is None:
-        return None
+def match_category(value: str):
+    """The category a Chinese or English name refers to, ignoring case and spaces; None if none."""
     wanted = re.sub(r"\s+", "", value).lower()
     for name, english in MISTAKE_CATEGORIES.items():
         if wanted in (re.sub(r"\s+", "", name).lower(), english):
             return name
-    choices = " / ".join(f"{e}（{n}）" for n, e in MISTAKE_CATEGORIES.items())
-    die(f"类别只能是 {choices}，收到「{value}」")
+    return None
 
 
-def mistake_line(m: dict, with_category: bool = True) -> str:
-    fix = f"  →  {m['fix']}" if m["fix"] else ""
-    tag = f"[{m['category']}] " if with_category else ""
-    return f"{m['date']}  {tag}{m['mistake']}{fix}"
+def wanted_category(value):
+    """Maps a -c argument to a category name."""
+    if value is None:
+        return None
+    name = match_category(value)
+    if not name:
+        choices = " / ".join(f"{e}（{n}）" for n, e in MISTAKE_CATEGORIES.items())
+        die(f"类别只能是 {choices}，收到「{value}」")
+    return name
+
+
+def read_mistakes() -> list:
+    """Every recorded mistake, oldest first: {path, date, problem, category, sections}."""
+    entries = []
+    for path in sorted(MISTAKES_DIR.glob("*.md")) if MISTAKES_DIR.is_dir() else []:
+        notes = parse_notes(path.read_text(encoding="utf-8"))
+        meta = notes["meta"]
+        entries.append({"path": path, "date": meta.get("日期", ""), "problem": meta.get("题目", ""),
+                        "category": match_category(meta.get("类别", "")) or "粗心", "sections": notes["sections"]})
+    return entries
 
 
 def problem_title(key: str) -> str:
@@ -756,76 +772,168 @@ def problem_title(key: str) -> str:
     return problem.notes()["title"] if problem.notes_path.exists() else key
 
 
-def table_cell(text: str) -> str:
-    return text.replace("|", "\\|").replace("\n", " ") or "—"
+def print_mistake(m: dict, indent: str = "  "):
+    for name in MISTAKE_SECTIONS:
+        text = m["sections"].get(name, "")
+        if text:
+            print(f"{indent}{name}:")
+            print(textwrap.indent(text, indent + "  "))
 
 
 def write_mistakes_page(mistakes: list):
-    """Regenerates MISTAKES.md from mistakes.csv, grouped by category, newest first."""
-    lines = ["# 错题本", "", "由 `python3 lc.py oops` 记录（数据在 mistakes.csv），每记一条自动重新生成。", ""]
+    """Regenerates MISTAKES.md from mistakes/, grouped by category, newest first."""
+    lines = ["# 错题本", "",
+             "由 `python3 lc.py` 根据 mistakes/ 里的每条记录生成；改记录后运行 `python3 lc.py mistakes` 即可更新。", ""]
     for category in MISTAKE_CATEGORIES:
         rows = [m for m in reversed(mistakes) if m["category"] == category]
         if not rows:
             continue
-        lines += [f"## {category}（{len(rows)}）", "", "| 日期 | 题目 | 错在哪 | 正确写法 |", "| --- | --- | --- | --- |"]
+        lines += [f"## {category}（{len(rows)}）", ""]
         for m in rows:
-            problem = PROBLEMS / m["problem"] / "notes.md"
-            link = f"[{problem_title(m['problem'])}]({rel(problem)})" if problem.exists() else m["problem"]
-            lines.append(f"| {m['date']} | {link} | {table_cell(m['mistake'])} | {table_cell(m['fix'])} |")
-        lines.append("")
+            notes = PROBLEMS / m["problem"] / "notes.md"
+            title = f"[{problem_title(m['problem'])}]({rel(notes)})" if notes.exists() else m["problem"]
+            lines += [f"### {m['date']} · {title}", "", f"记录原文: [{rel(m['path'])}]({rel(m['path'])})", ""]
+            for name in MISTAKE_SECTIONS:
+                text = m["sections"].get(name, "")
+                if text:
+                    lines += [f"**{name}**", "", text, ""]
     MISTAKES_PAGE.write_text("\n".join(lines), encoding="utf-8")
 
 
-def record_mistake(problem: Problem, category: str, mistake: str, fix: str):
-    is_new = not MISTAKES.exists()
-    with MISTAKES.open("a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, MISTAKE_FIELDS)
-        if is_new:
-            writer.writeheader()
-        writer.writerow({"date": date.today().isoformat(), "problem": problem.key,
-                         "category": category, "mistake": mistake, "fix": fix})
+def fails_dir(problem: Problem) -> Path:
+    return FAILS / problem.key
+
+
+def keep_failing_version(problem: Problem, path: Path):
+    """Saves a failing version of the practice file (skipping repeats), so mistakes fixed later can still be read."""
+    folder = fails_dir(problem)
+    folder.mkdir(parents=True, exist_ok=True)
+    kept = sorted(folder.glob("*.py"), key=lambda p: int(p.stem))
+    code = path.read_text(encoding="utf-8")
+    if kept and kept[-1].read_text(encoding="utf-8") == code:
+        return
+    number = int(kept[-1].stem) + 1 if kept else 1
+    (folder / f"{number}.py").write_text(code, encoding="utf-8")
+    for old in kept[: max(0, len(kept) + 1 - MAX_FAILING_VERSIONS)]:
+        old.unlink()
+
+
+def clear_failing_versions(problem: Problem):
+    folder = fails_dir(problem)
+    if folder.is_dir():
+        for path in folder.glob("*.py"):
+            path.unlink()
+        folder.rmdir()
+
+
+def mistake_template(problem: Problem, category, sections: dict) -> str:
+    choice = category or " / ".join(MISTAKE_CATEGORIES) + "（留一个）"
+    lines = [f"# 记一个错：{problem.notes()['title']}", "",
+             "<!-- 写完存盘，回终端按回车收进错题本；「错在哪」留空就是不记。代码可以用 ``` 包起来。 -->", "",
+             f"- 类别: {choice}", ""]
+    for name in MISTAKE_SECTIONS:
+        lines += [f"## {name}", "", sections.get(name, ""), ""]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def open_in_editor(path: Path):
+    for command in (["code", str(path)], ["open", "-t", str(path)]):
+        if shutil.which(command[0]) and subprocess.run(command).returncode == 0:
+            return
+    print(f"请用编辑器打开 {path}")
+
+
+def next_mistake_path(problem: Problem) -> Path:
+    MISTAKES_DIR.mkdir(exist_ok=True)
+    base = f"{date.today().isoformat()}_{problem.key}"
+    path, n = MISTAKES_DIR / f"{base}.md", 2
+    while path.exists():
+        path, n = MISTAKES_DIR / f"{base}_{n}.md", n + 1
+    return path
+
+
+def ask_category() -> str:
+    names = list(MISTAKE_CATEGORIES)
+    print("类别没选好: " + "   ".join(f"{i}. {n}" for i, n in enumerate(names, 1)))
+    while True:
+        answer = input("选择编号: ").strip()
+        if answer.isdigit() and 1 <= int(answer) <= len(names):
+            return names[int(answer) - 1]
+        print("  没有这个编号，再选一次")
+
+
+def mistake_draft(problem: Problem) -> Path:
+    return PRACTICE / f"{problem.key}.mistake.md"
+
+
+def parse_mistake(text: str):
+    """(category or None, sections) from a draft in the mistake_template layout."""
+    notes = parse_notes(re.sub(r"<!--.*?-->", "", text, flags=re.S))
+    category = match_category(re.sub(r"[（(].*", "", notes["meta"].get("类别", "")))
+    return category, {name: notes["sections"].get(name, "") for name in MISTAKE_SECTIONS}
+
+
+def file_mistake(problem: Problem, category: str, sections: dict) -> Path:
+    """Writes one entry to mistakes/ and regenerates MISTAKES.md."""
+    lines = [f"# {problem.notes()['title']}", "", f"- 日期: {date.today().isoformat()}", f"- 题目: {problem.key}",
+             f"- 类别: {category}", ""]
+    for name in MISTAKE_SECTIONS:
+        if sections[name]:
+            lines += [f"## {name}", "", sections[name], ""]
+    dest = next_mistake_path(problem)
+    dest.write_text("\n".join(lines), encoding="utf-8")
     write_mistakes_page(read_mistakes())
-    print(f"已记进错题本（{category}）：{mistake}")
+    print(f"已记进错题本（{category}）: {rel(dest)}")
+    return dest
 
 
-def prompt_mistake(problem: Problem, mistake: str = "") -> bool:
-    """Asks for one mistake interactively; returns False when the answer is left empty."""
+def write_mistake(problem: Problem) -> bool:
+    """Opens the mistake draft in the editor and files it once saved; returns False when nothing was recorded."""
+    draft = mistake_draft(problem)
+    PRACTICE.mkdir(exist_ok=True)
+    if draft.exists():
+        print("上次没写完的草稿还在，接着写")
+    else:
+        draft.write_text(mistake_template(problem, None, {}), encoding="utf-8")
+    open_in_editor(draft)
+    print(f"草稿: {rel(draft)}")
     try:
-        mistake = mistake or input("错在哪: ").strip()
-        if not mistake:
+        if input("写完存盘后回这里按回车（输入 q 不记了）: ").strip().lower() == "q":
+            draft.unlink()
             return False
-        fix = input("正确写法（可留空）: ").strip()
-        names = list(MISTAKE_CATEGORIES)
-        print("类别: " + "   ".join(f"{i}. {n}" for i, n in enumerate(names, 1)))
-        while True:
-            answer = input("选择编号: ").strip()
-            if answer.isdigit() and 1 <= int(answer) <= len(names):
-                break
-            print("  没有这个编号，再选一次")
+        category, sections = parse_mistake(draft.read_text(encoding="utf-8"))
+        if not sections["错在哪"]:
+            print("「错在哪」是空的，没有记")
+            draft.unlink()
+            return False
+        category = category or ask_category()
     except (EOFError, KeyboardInterrupt):
-        print()
+        print(f"\n草稿留在 {rel(draft)}，下次记错时接着写")
         return False
-    record_mistake(problem, names[int(answer) - 1], mistake, fix)
+    file_mistake(problem, category, sections)
+    draft.unlink()
     return True
 
 
 def cmd_oops(args):
     problem = find_problem(args.problem) if args.problem else resolve_practice(None)
-    category = wanted_category(args.c)
-    if args.m and category:
-        record_mistake(problem, category, args.m.strip(), (args.f or "").strip())
+    if args.file:
+        category, sections = parse_mistake(Path(args.file).read_text(encoding="utf-8"))
+        if not sections["错在哪"] or not category:
+            die(f"{args.file} 里要有「错在哪」和一个类别（{' / '.join(MISTAKE_CATEGORIES)}）")
+        file_mistake(problem, category, sections)
         return
     if not sys.stdin.isatty():
-        die("非交互环境请同时给出 -m 错在哪 和 -c 类别")
-    print(f"记一个错：{problem.notes()['title']}")
-    prompt_mistake(problem, (args.m or "").strip())
+        die("记错要在终端里运行（会打开编辑器，写完回终端按回车），或用 --file 给出写好的记录")
+    write_mistake(problem)
 
 
 def cmd_mistakes(args):
     category = wanted_category(args.c)
     key = find_problem(args.problem).key if args.problem else None
-    mistakes = [m for m in read_mistakes()
-                if (not key or m["problem"] == key) and (not category or m["category"] == category)]
+    everything = read_mistakes()
+    write_mistakes_page(everything)
+    mistakes = [m for m in everything if (not key or m["problem"] == key) and (not category or m["category"] == category)]
     if not mistakes:
         print("错题本里还没有符合条件的记录。做题时发现错误可以运行: python3 lc.py oops")
         return
@@ -833,10 +941,10 @@ def cmd_mistakes(args):
         rows = [m for m in reversed(mistakes) if m["category"] == name]
         if not rows:
             continue
-        print(f"\n── {name}（{len(rows)}）")
+        print(f"\n══ {name}（{len(rows)}）")
         for m in rows:
-            print(f"  {problem_title(m['problem'])}")
-            print(f"    {mistake_line(m, with_category=False)}")
+            print(f"\n── {m['date']}  {problem_title(m['problem'])}")
+            print_mistake(m)
     print(f"\n共 {len(mistakes)} 条；也可以直接打开 {rel(MISTAKES_PAGE)} 看")
 
 
@@ -1141,11 +1249,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_done)
 
     categories = " / ".join(f"{e}（{n}）" for n, e in MISTAKE_CATEGORIES.items())
-    p = sub.add_parser("oops", help="记一个错进错题本；不给 -m / -c 就逐项询问")
+    p = sub.add_parser("oops", help="记一个错进错题本：在编辑器里写错在哪、正确写法、知识点")
     p.add_argument("problem", nargs="?", help="省略则记在练习区唯一那道题上")
-    p.add_argument("-m", metavar="错在哪", help="犯了什么错")
-    p.add_argument("-f", metavar="正确写法", help="应该怎么写（可省略）")
-    p.add_argument("-c", metavar="类别", help=f"类别：{categories}")
+    p.add_argument("--file", metavar="草稿", help="直接收进一份按草稿格式写好的记录，不打开编辑器（给 Claude 用）")
     p.set_defaults(func=cmd_oops)
 
     p = sub.add_parser("mistakes", help="翻错题本：按类别列出记过的错，最新的在前")
@@ -1268,7 +1374,7 @@ def practice_menu(problem: Problem):
         ("测试（没通过的只说答案不对 / 运行出错 / 超时）", ["test", ref, "--brief"]),
         ("测试（显示输入、期望输出、实际输出和报错位置）", ["test", ref]),
         ("要一层提示", ["hint", ref]),
-        ("记一个错进错题本", ["oops", ref]),
+        ("记一个错进错题本（在编辑器里写）", ["oops", ref]),
         ("归档并复盘", ["done", ref]),
     ]
     while practice_file(problem).exists():

@@ -32,7 +32,7 @@ Starting or continuing a problem opens its practice menu, so the whole attempt h
 | Test, verdicts only | Each failing sample says only whether the answer was wrong, the code raised an error, or it timed out |
 | Test, with details | Each failing sample also shows its input, expected and actual output, and for an error the lines of the attempt it went through |
 | Hint | Reveals the next hint layer |
-| Record a mistake | Adds an entry to the mistake notebook |
+| Record a mistake | Opens a mistake draft in the editor |
 | Archive | Archives the attempt and leaves the practice menu |
 | 0 | Back to the main menu; the practice file stays for later |
 
@@ -44,9 +44,13 @@ In plain terms: a round is one pass through the problems. Starting a new round m
 
 ## Mistake notebook
 
-In plain terms: every mistake made while solving gets one entry (the problem, what went wrong, the correct way and a category), so recurring mistakes show up across problems. Entries can be added at any time during an attempt, and archiving asks once more. While solving, past mistakes stay hidden; they appear in the review printed after archiving, and can be read at any time from the menu, with `mistakes`, or in `MISTAKES.md`.
+In plain terms: every mistake made while solving gets one entry with what went wrong, the correct way and the point to remember, written in an editor so it can span several lines and hold code. While solving, past mistakes stay hidden; they appear in the review printed after archiving, and can be read at any time from the menu, with `mistakes`, or in `MISTAKES.md`.
 
-Categories: Python usage (`python`), edge cases (`edge`), approach (`idea`), careless slips (`careless`). Entries live in `mistakes.csv`; `MISTAKES.md` is regenerated from it after every new entry, grouped by category with the newest first.
+Recording a mistake opens a draft in VS Code (`code`; TextEdit when it is missing) with four parts: a category, what went wrong, the correct way, and the point to remember. Saving the draft and pressing Enter in the terminal files it; leaving "what went wrong" empty, or typing `q`, records nothing. A draft that was not finished stays in the practice area and is reopened next time. Archiving asks once more whether there is a mistake to record.
+
+Claude can also record them: in a Claude Code session in this repo, ask it to analyse the current code and record the mistakes. It reads this attempt's current code and every version that failed a test, files one entry per mistake with `oops --file`, and opens the entries in the editor for adjustment; the steps it follows are in `CLAUDE.md`. Up to five distinct failing versions are kept per attempt in the practice area and removed when the attempt is archived.
+
+Categories: Python usage (`python`), edge cases (`edge`), approach (`idea`), careless slips (`careless`). Each entry is a file in `mistakes/` that can be edited later; `MISTAKES.md` is regenerated from them after every new entry and whenever `mistakes` runs, grouped by category with the newest first.
 
 ## Daily loop
 
@@ -89,7 +93,7 @@ Archiving runs the tests again, prints every past attempt's speed on the large i
 | `python3 lc.py test [problem] [--brief]` | Tests practice-area attempts; `--brief` reports a failing sample's verdict only, without its input, output or error |
 | `python3 lc.py hint [problem]` | Reveals the next hint layer |
 | `python3 lc.py done [problem] [--optimal yes\|no]` | Archives a passing attempt; the flag skips the question |
-| `python3 lc.py oops [problem] [-m mistake] [-f fix] [-c category]` | Records a mistake, asking for whatever is not given; the problem defaults to the one in the practice area |
+| `python3 lc.py oops [problem] [--file draft]` | Records a mistake in the editor; `--file` files a draft that is already written, without the editor. The problem defaults to the one in the practice area |
 | `python3 lc.py mistakes [problem] [-c category]` | Lists recorded mistakes by category, newest first |
 | `python3 lc.py list [-d level] [-t type] [--plan name] [--all]` | Problems not done this round, new and old, grouped by difficulty, then by type (a problem with several types appears under each); `--all` adds the ones done this round |
 | `python3 lc.py round [--new]` | Shows this round's progress; `--new` starts a new round today |
@@ -119,13 +123,14 @@ In plain terms: a problem comes back for a redo after 3 days; each consecutive r
 | `problems/booking_<name>/` | Interview problems without a LeetCode number, same layout |
 | `practice/` | Attempts in progress; not committed |
 | `history.csv` | One row per archived redo |
-| `mistakes.csv` | One row per recorded mistake |
+| `mistakes/<date>_<number>_<name>.md` | One recorded mistake |
 | `MISTAKES.md` | Generated mistake notebook grouped by category |
 | `round.json` | Start date of the current round |
 | `REVIEW.md` | Generated review index grouped by problem type |
 | `helpers.py` | `ListNode`, `TreeNode` and converters to and from LeetCode's list notation |
 | `algorithms/` | Standalone algorithm practice (heap sort) |
 | `lc.py` | The command-line tool |
+| `CLAUDE.md` | How a Claude Code session records mistakes from the current code |
 
 Each Python attempt is plain LeetCode code: it can be pasted into LeetCode after removing the `helpers` import, if any.
 
