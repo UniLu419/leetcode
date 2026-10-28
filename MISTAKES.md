@@ -10,7 +10,7 @@
 
 **错在哪**
 
-第 13 行写成 `hash_table[nums[i]] = hash_table[nums[i]].append(i)`。`append` 是原地修改、返回 None，赋值回去就把这个值的下标列表换成了 None。同一个数第二次出现后（如 [3,3]、[0,4,3,0]），第 19 行 `len(hash_table[ans])` 会报 `TypeError: object of type 'NoneType' has no len()`。
+第 13 行把 `append` 的结果赋值回去：`append` 是直接在原列表上加新值，返回的是 None，不是加完之后的列表。
 
 **正确写法**
 
@@ -30,7 +30,7 @@ hash_table[nums[i]].append(i)
 
 **错在哪**
 
-第 12 行用 `hash_table[nums[i]] is not None` 判断某个值有没有存过。键还不在字典里时，`hash_table[nums[i]]` 这一步就直接抛 KeyError，根本走不到 `is not None` 的比较，所以 5 个样例全部在这一行报错。
+第 12 行用 `hash_table[nums[i]] is not None` 判断键在不在：`hash_table[key]` 取不存在的键会直接抛 KeyError，不会返回 None。
 
 **正确写法**
 
