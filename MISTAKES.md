@@ -24,6 +24,12 @@ hash_table[nums[i]].append(i)
 - 需要返回新对象时用 `sorted(x)`、`x + [i]` 这类写法。
 - "值 → 列表"的字典可以写成 `d.setdefault(key, []).append(i)`，或用 `collections.defaultdict(list)`，省掉先判断再建列表这一步。
 
+**排查 None 相关的报错**
+
+- 报错的那一行是"用到坏值"的地方，不一定是"产生坏值"的地方。看到 `NoneType` 相关的报错，先倒推这个变量最后一次是在哪里被赋值的。
+- 倒推的办法：在可疑的赋值后面临时加 `print(...)` 或 `assert x is not None`，第一个出问题的位置就是源头。
+- 一个本不该是 None 的值变成了 None，加 `is not None` 判断只是把症状藏起来：报错可能消失，但数据已经错了，最后变成更难查的"答案不对"。
+
 ### 2026-10-28 · [1. Two Sum](problems/0001_two_sum/notes.md)
 
 记录原文: [mistakes/2026-10-28_0001_two_sum.md](mistakes/2026-10-28_0001_two_sum.md)
@@ -57,27 +63,3 @@ if nums[i] in hash_table:
   ```
 
 - 刷题里最常用的场景：链表、树的节点判空（`while node is not None:`，常简写成 `while node:`，因为节点对象本身总是真值），以及函数可能返回 None 的结果（如 `d.get`、`re.match`）。
-
-## 思路（1）
-
-### 2026-10-28 · [1. Two Sum](problems/0001_two_sum/notes.md)
-
-记录原文: [mistakes/2026-10-28_0001_two_sum_3.md](mistakes/2026-10-28_0001_two_sum_3.md)
-
-**错在哪**
-
-第 13 行 `append` 用错了：`append` 是直接在原列表上加新值，返回的是 None，不是加完之后的列表。
-
-**正确写法**
-
-不在用的地方挡 None，去改产生 None 的那一行（第 12 行保持 `if nums[i] in hash_table:` 就够了）：
-
-```python
-hash_table[nums[i]].append(i)
-```
-
-**知识点**
-
-- 报错的那一行是"用到坏值"的地方，不一定是"产生坏值"的地方。看到 `NoneType` 相关的报错，先倒推这个变量最后一次是在哪里被赋值的。
-- 倒推的办法：在可疑的赋值后面临时加 `print(...)` 或 `assert x is not None`，第一个出问题的位置就是源头。
-- 一个本不该是 None 的值变成了 None，加 `is not None` 判断只是把症状藏起来：报错可能消失，但数据已经错了，最后变成更难查的"答案不对"。
