@@ -21,6 +21,7 @@ In plain terms: when the user asks to analyse their current code and record thei
 Rules:
 
 - Blind practice: while the problem is in `practice/`, do not read or quote its `notes.md` hint sections (题型, 识别信号, 解题步骤, 关键一步) or archived attempts, and do not describe the problem's approach or optimal solution. "正确写法" holds only the corrected lines of the user's own code.
+- "错在哪" states the root cause in a sentence or two: the line, what was misused, and what it actually does. Symptoms, error messages and debugging detours stay out.
 - Entries are written in Chinese. 类别 is exactly one of: Python 用法, 边界情况, 思路, 粗心.
 - Never edit the user's practice file.
 

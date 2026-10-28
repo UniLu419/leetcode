@@ -66,10 +66,7 @@ if nums[i] in hash_table:
 
 **错在哪**
 
-第 19 行报 `TypeError: object of type 'NoneType' has no len()` 之后，第 2 版在第 12 行加了 `and hash_table[nums[i]] is not None`，想在用之前把 None 挡掉。但这个 None 不是本来就有的，是第 13 行把 `append` 的返回值赋回去造成的：
-
-- 源头没改，所以第 19 行照样拿到 None，[3,3] 和 [0,4,3,0] 还是报同样的错。
-- 这个判断还会让程序在遇到 None 时走进 else，把这个值已经存的下标列表直接换成 `[i]`。比如 [1,1,1,7] 跑完，表里 1 只剩 `[2]`，下标 0 和 1 都丢了。
+第 13 行 `append` 用错了：`append` 是直接在原列表上加新值，返回的是 None，不是加完之后的列表。
 
 **正确写法**
 
