@@ -23,13 +23,30 @@ It does two things:
 - Sets this repo's own git identity to Renee Lu <reneelu419@gmail.com> and signs commits with the SSH key `~/.ssh/id_celestia` (the key this repo is pushed with), so commits never pick up a global work identity. If that key is missing it says so and leaves git untouched.
 - Adds `alias lc="python3 <this repo>/lc.py"` to `~/.zshrc` (zsh) or `~/.bash_profile` / `~/.bashrc` (bash), using wherever the repo was cloned. Running it again changes nothing, and it updates the path if the repo has moved. It leaves an existing `lc` alias that points elsewhere untouched; for other shells it prints the line to add by hand.
 
-The menu shows the current round and the practice area, and offers: practise by difficulty and then type, start a given problem, test, hint, archive, problems due for a redo, list progress, start a new round, add a problem outside the lists, check every archived attempt, and rebuild `REVIEW.md`. Practising by type, the redo list and list progress each end by asking for a problem number to start right away. `0`, Ctrl-D or Ctrl-C leaves the menu.
+The menu shows the current round and the practice area, and offers: practise by difficulty and then type, start a given problem, continue the problem in the practice area, record a mistake, read the mistake notebook, problems due for a redo, list progress, start a new round, add a problem outside the lists, check every archived attempt, and rebuild `REVIEW.md`. Practising by type, the redo list and list progress each end by asking for a problem number to start right away. `0`, Ctrl-D or Ctrl-C leaves the menu.
+
+Starting or continuing a problem opens its practice menu, so the whole attempt happens in one terminal while the file is edited in an editor. Running the tool while a problem is in the practice area opens that problem's practice menu straight away (with several, it first asks which one); leaving it shows the main menu:
+
+| Entry | What it does |
+| ----- | ------------ |
+| Test, verdicts only | Each failing sample says only whether the answer was wrong, the code raised an error, or it timed out |
+| Test, with details | Each failing sample also shows its input, expected and actual output, and for an error the lines of the attempt it went through |
+| Hint | Reveals the next hint layer |
+| Record a mistake | Adds an entry to the mistake notebook |
+| Archive | Archives the attempt and leaves the practice menu |
+| 0 | Back to the main menu; the practice file stays for later |
 
 ## Rounds
 
 In plain terms: a round is one pass through the problems. Starting a new round makes every problem count as not done again, so earlier problems come back alongside new ones; a problem counts as done in this round once an attempt is archived on or after the round's start date.
 
 `list` and the menu's practice entry mark each problem: done this round, done before but not this round, or never done. Problems done this round are left out unless `--all` is given, and the type picker shows "done this round / total" per type. The round's start date lives in `round.json`.
+
+## Mistake notebook
+
+In plain terms: every mistake made while solving gets one entry (the problem, what went wrong, the correct way and a category), so recurring mistakes show up across problems. Entries can be added at any time during an attempt, and archiving asks once more. While solving, past mistakes stay hidden; they appear in the review printed after archiving, and can be read at any time from the menu, with `mistakes`, or in `MISTAKES.md`.
+
+Categories: Python usage (`python`), edge cases (`edge`), approach (`idea`), careless slips (`careless`). Entries live in `mistakes.csv`; `MISTAKES.md` is regenerated from it after every new entry, grouped by category with the newest first.
 
 ## Daily loop
 
@@ -42,6 +59,7 @@ python3 lc.py plan top                 # problems in a list that are not done ye
 python3 lc.py start 42                 # blank practice file: signature only (same as redo)
 python3 lc.py test                     # sample cases, then a large input for speed
 python3 lc.py hint                     # reveal the next hint layer
+python3 lc.py oops                     # record a mistake in the mistake notebook
 python3 lc.py done                     # archive, compare with past attempts, review the notes
 ```
 
@@ -59,7 +77,7 @@ Hints come in five layers, one per call:
 
 The notes themselves are written in Chinese.
 
-Archiving runs the tests again, prints every past attempt's speed on the large input next to this one, asks whether this attempt reached the optimal solution in one go, and prints the notes for review. Every archived redo adds a row to `history.csv` with the date, minutes spent, hint layers used and the optimal answer.
+Archiving runs the tests again, prints every past attempt's speed on the large input next to this one, asks whether this attempt reached the optimal solution in one go, asks for any mistakes not yet recorded, and prints the notes for review together with every mistake recorded for this problem. Every archived redo adds a row to `history.csv` with the date, minutes spent, hint layers used and the optimal answer.
 
 ## Commands
 
@@ -68,9 +86,11 @@ Archiving runs the tests again, prints every past attempt's speed on the large i
 | `python3 lc.py new "21. Merge Two Sorted Lists"` | Creates the problem folder (notes and test-case templates) and a practice file |
 | `python3 lc.py start <problem>` | Starts a problem in the practice area: a first attempt or a blind redo (`redo` is the same command) |
 | `python3 lc.py plan [name] [--all]` | Progress through a problem list, by group; lists the problems not done yet |
-| `python3 lc.py test [problem]` | Tests practice-area attempts |
+| `python3 lc.py test [problem] [--brief]` | Tests practice-area attempts; `--brief` reports a failing sample's verdict only, without its input, output or error |
 | `python3 lc.py hint [problem]` | Reveals the next hint layer |
 | `python3 lc.py done [problem] [--optimal yes\|no]` | Archives a passing attempt; the flag skips the question |
+| `python3 lc.py oops [problem] [-m mistake] [-f fix] [-c category]` | Records a mistake, asking for whatever is not given; the problem defaults to the one in the practice area |
+| `python3 lc.py mistakes [problem] [-c category]` | Lists recorded mistakes by category, newest first |
 | `python3 lc.py list [-d level] [-t type] [--plan name] [--all]` | Problems not done this round, new and old, grouped by difficulty, then by type (a problem with several types appears under each); `--all` adds the ones done this round |
 | `python3 lc.py round [--new]` | Shows this round's progress; `--new` starts a new round today |
 | `python3 lc.py next [-n 10] [-d level] [-t type]` | Lists the problems most due for a redo |
@@ -99,6 +119,8 @@ In plain terms: a problem comes back for a redo after 3 days; each consecutive r
 | `problems/booking_<name>/` | Interview problems without a LeetCode number, same layout |
 | `practice/` | Attempts in progress; not committed |
 | `history.csv` | One row per archived redo |
+| `mistakes.csv` | One row per recorded mistake |
+| `MISTAKES.md` | Generated mistake notebook grouped by category |
 | `round.json` | Start date of the current round |
 | `REVIEW.md` | Generated review index grouped by problem type |
 | `helpers.py` | `ListNode`, `TreeNode` and converters to and from LeetCode's list notation |

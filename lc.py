@@ -28,6 +28,8 @@ PROBLEMS = ROOT / "problems"
 PRACTICE = ROOT / "practice"
 STATE_FILE = PRACTICE / ".state.json"
 HISTORY = ROOT / "history.csv"
+MISTAKES = ROOT / "mistakes.csv"
+MISTAKES_PAGE = ROOT / "MISTAKES.md"
 REVIEW = ROOT / "REVIEW.md"
 PLANS = ROOT / "plans"
 ROUND_FILE = ROOT / "round.json"
@@ -42,6 +44,9 @@ CASE_TIMEOUT = 2.0  # seconds per sample case
 BENCH_TIMEOUT = 3.0  # seconds for the large input
 BASE_INTERVAL_DAYS = 3  # review interval after a non-clean attempt; doubles per consecutive clean attempt
 HISTORY_FIELDS = ["date", "problem", "minutes", "hints", "optimal"]
+MISTAKE_FIELDS = ["date", "problem", "category", "mistake", "fix"]
+# Mistake categories with the English name `-c` also accepts.
+MISTAKE_CATEGORIES = {"Python 用法": "python", "边界情况": "edge", "思路": "idea", "粗心": "careless"}
 VERSION_TABLE_HEADER = ["| 文件 | 思路 | 时间 | 空间 | 结论 |", "| --- | --- | --- | --- | --- |"]
 PENDING = "待填"
 DIFFICULTIES = {"Easy": "简单", "Medium": "中等", "Hard": "困难"}
@@ -361,6 +366,12 @@ def describe_error(error: BaseException, path: Path) -> str:
     return f"{type(error).__name__}: {error}{where}"
 
 
+def error_trace(error: BaseException, path: Path) -> list:
+    """The call chain inside the attempt file, outermost first: one line per frame with its source."""
+    frames = [f for f in traceback.extract_tb(error.__traceback__) if f.filename == str(path)]
+    return [f"第 {f.lineno} 行 {f.name}(): {f.line}" for f in frames]
+
+
 def run_bench(module, cases, path: Path) -> str:
     if not hasattr(cases, "bench"):
         return ""
@@ -375,28 +386,38 @@ def run_bench(module, cases, path: Path) -> str:
     return f"{(time.perf_counter() - start) * 1000:.1f}ms"
 
 
-def test_attempt(path: Path, cases, verbose: bool = True) -> dict:
-    """Runs the sample cases, then the large input if all pass; failures are always printed."""
+def test_attempt(path: Path, cases, verbose: bool = True, details: bool = True) -> dict:
+    """Runs the sample cases, then the large input if all pass; failures are always printed.
+
+    With details off, a failure shows only its verdict (wrong answer, error, timeout), not the input, output or error.
+    """
     try:
         module = load_module(path)
     except Exception as e:
-        print(f"  ✗ 文件无法运行: {describe_error(e, path)}")
+        print(f"  ✗ 文件无法运行: {describe_error(e, path)}" if details else "  ✗ 文件无法运行（语法或导入出错）")
         return {"ok": False, "passed": 0, "total": len(cases.CASES), "bench": ""}
     passed = 0
     for i, case in enumerate(cases.CASES, 1):
         args = copy.deepcopy(case_args(case, cases))
         start = time.perf_counter()
+        trace = []
         try:
             output = call_with_timeout(lambda: run_target(module, cases, args), CASE_TIMEOUT)
             ok = matches(output, case["expected"], cases, args)
+            verdict = "答案不对"
             detail = "" if ok else f"期望 {short(case['expected'])}，实际 {short(normalize(output, False))}"
         except Timeout:
-            ok, detail = False, f"超过 {CASE_TIMEOUT:g}s"
+            ok, verdict, detail = False, "超时", f"超过 {CASE_TIMEOUT:g}s"
         except Exception as e:
-            ok, detail = False, describe_error(e, path)
+            ok, verdict, detail = False, "运行出错", describe_error(e, path)
+            trace = error_trace(e, path)
         ms = (time.perf_counter() - start) * 1000
-        if not ok:
+        if not ok and not details:
+            print(f"  ✗ 样例 {i}  {verdict}")
+        elif not ok:
             print(f"  ✗ 样例 {i}  输入 {short(normalize(case_args(case, cases), False))}  {detail}")
+            for line in trace:
+                print(f"      {line}")
         elif verbose:
             print(f"  ✓ 样例 {i}  {ms:.2f}ms")
         passed += ok
@@ -484,7 +505,8 @@ def start_practice(problem: Problem, body: str):
     state[problem.key] = {"start": datetime.now().isoformat(timespec="seconds"), "hints": 0}
     save_state(state)
     print(f"已生成练习文件: {rel(path)}")
-    print(f"写完运行 python3 lc.py test {problem.ref}；卡住了运行 python3 lc.py hint {problem.ref}")
+    if not IN_MENU:
+        print(f"写完运行 python3 lc.py test {problem.ref}；卡住了运行 python3 lc.py hint {problem.ref}")
 
 
 def cmd_new(args):
@@ -538,7 +560,8 @@ def cmd_hint(args):
         print()
     if level < MAX_HINT:
         upcoming = HINT_SECTIONS[level] if level < len(HINT_SECTIONS) else "旧答案"
-        print(f"还卡住就再运行一次 hint，下一层是「{upcoming}」")
+        again = "再选一次「要一层提示」" if IN_MENU else "再运行一次 hint"
+        print(f"还卡住就{again}，下一层是「{upcoming}」")
 
 
 def cmd_test(args):
@@ -550,7 +573,7 @@ def cmd_test(args):
         path = practice_file(problem)
         cases = load_cases(problem)
         print(rel(path))
-        result = test_attempt(path, cases)
+        result = test_attempt(path, cases, details=not args.brief)
         print(f"  {summary(result)}")
         all_ok &= result["ok"]
     return 0 if all_ok else 1
@@ -686,11 +709,135 @@ def cmd_done(args):
     edit_notes(problem, dest.name, set_best=optimal and problem.best_attempt() is None)
 
     print(f"\n已归档为 {rel(dest)}，用时 {minutes if minutes != '' else '?'} 分钟，用了 {hints} 层提示")
+    if sys.stdin.isatty():
+        print("\n这次还有要记进错题本的错吗？（直接回车跳过）")
+        while prompt_mistake(problem):
+            print("\n还有吗？（直接回车结束）")
     sections = problem.notes()["sections"]
     print("\n── 对照笔记复盘 ──")
     for name in REVIEW_SECTIONS:
         print(f"[{name}]\n{sections.get(name) or PENDING}\n")
+    own = [m for m in read_mistakes() if m["problem"] == problem.key]
+    if own:
+        print("[错题本里这道题的记录]")
+        for m in own:
+            print(f"  {mistake_line(m)}")
+        print()
     print(f"记得在 {rel(problem.notes_path)} 的「各版本」表里补全 {dest.name} 这一行")
+
+
+def read_mistakes() -> list:
+    if not MISTAKES.exists():
+        return []
+    with MISTAKES.open(newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def wanted_category(value):
+    """Maps a -c argument (Chinese or English, ignoring case) to a category name."""
+    if value is None:
+        return None
+    wanted = re.sub(r"\s+", "", value).lower()
+    for name, english in MISTAKE_CATEGORIES.items():
+        if wanted in (re.sub(r"\s+", "", name).lower(), english):
+            return name
+    choices = " / ".join(f"{e}（{n}）" for n, e in MISTAKE_CATEGORIES.items())
+    die(f"类别只能是 {choices}，收到「{value}」")
+
+
+def mistake_line(m: dict, with_category: bool = True) -> str:
+    fix = f"  →  {m['fix']}" if m["fix"] else ""
+    tag = f"[{m['category']}] " if with_category else ""
+    return f"{m['date']}  {tag}{m['mistake']}{fix}"
+
+
+def problem_title(key: str) -> str:
+    problem = Problem(PROBLEMS / key)
+    return problem.notes()["title"] if problem.notes_path.exists() else key
+
+
+def table_cell(text: str) -> str:
+    return text.replace("|", "\\|").replace("\n", " ") or "—"
+
+
+def write_mistakes_page(mistakes: list):
+    """Regenerates MISTAKES.md from mistakes.csv, grouped by category, newest first."""
+    lines = ["# 错题本", "", "由 `python3 lc.py oops` 记录（数据在 mistakes.csv），每记一条自动重新生成。", ""]
+    for category in MISTAKE_CATEGORIES:
+        rows = [m for m in reversed(mistakes) if m["category"] == category]
+        if not rows:
+            continue
+        lines += [f"## {category}（{len(rows)}）", "", "| 日期 | 题目 | 错在哪 | 正确写法 |", "| --- | --- | --- | --- |"]
+        for m in rows:
+            problem = PROBLEMS / m["problem"] / "notes.md"
+            link = f"[{problem_title(m['problem'])}]({rel(problem)})" if problem.exists() else m["problem"]
+            lines.append(f"| {m['date']} | {link} | {table_cell(m['mistake'])} | {table_cell(m['fix'])} |")
+        lines.append("")
+    MISTAKES_PAGE.write_text("\n".join(lines), encoding="utf-8")
+
+
+def record_mistake(problem: Problem, category: str, mistake: str, fix: str):
+    is_new = not MISTAKES.exists()
+    with MISTAKES.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, MISTAKE_FIELDS)
+        if is_new:
+            writer.writeheader()
+        writer.writerow({"date": date.today().isoformat(), "problem": problem.key,
+                         "category": category, "mistake": mistake, "fix": fix})
+    write_mistakes_page(read_mistakes())
+    print(f"已记进错题本（{category}）：{mistake}")
+
+
+def prompt_mistake(problem: Problem, mistake: str = "") -> bool:
+    """Asks for one mistake interactively; returns False when the answer is left empty."""
+    try:
+        mistake = mistake or input("错在哪: ").strip()
+        if not mistake:
+            return False
+        fix = input("正确写法（可留空）: ").strip()
+        names = list(MISTAKE_CATEGORIES)
+        print("类别: " + "   ".join(f"{i}. {n}" for i, n in enumerate(names, 1)))
+        while True:
+            answer = input("选择编号: ").strip()
+            if answer.isdigit() and 1 <= int(answer) <= len(names):
+                break
+            print("  没有这个编号，再选一次")
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return False
+    record_mistake(problem, names[int(answer) - 1], mistake, fix)
+    return True
+
+
+def cmd_oops(args):
+    problem = find_problem(args.problem) if args.problem else resolve_practice(None)
+    category = wanted_category(args.c)
+    if args.m and category:
+        record_mistake(problem, category, args.m.strip(), (args.f or "").strip())
+        return
+    if not sys.stdin.isatty():
+        die("非交互环境请同时给出 -m 错在哪 和 -c 类别")
+    print(f"记一个错：{problem.notes()['title']}")
+    prompt_mistake(problem, (args.m or "").strip())
+
+
+def cmd_mistakes(args):
+    category = wanted_category(args.c)
+    key = find_problem(args.problem).key if args.problem else None
+    mistakes = [m for m in read_mistakes()
+                if (not key or m["problem"] == key) and (not category or m["category"] == category)]
+    if not mistakes:
+        print("错题本里还没有符合条件的记录。做题时发现错误可以运行: python3 lc.py oops")
+        return
+    for name in MISTAKE_CATEGORIES:
+        rows = [m for m in reversed(mistakes) if m["category"] == name]
+        if not rows:
+            continue
+        print(f"\n── {name}（{len(rows)}）")
+        for m in rows:
+            print(f"  {problem_title(m['problem'])}")
+            print(f"    {mistake_line(m, with_category=False)}")
+    print(f"\n共 {len(mistakes)} 条；也可以直接打开 {rel(MISTAKES_PAGE)} 看")
 
 
 def problem_tags(notes: dict) -> list:
@@ -985,12 +1132,26 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("test", help="测试练习区里的解答")
     p.add_argument("problem", nargs="?", help="省略则测试练习区全部题目")
+    p.add_argument("--brief", action="store_true", help="没通过的样例只说是答案不对、运行出错还是超时，不显示输入、输出和报错")
     p.set_defaults(func=cmd_test)
 
     p = sub.add_parser("done", help="测试通过后归档，并与旧解法对比、对照笔记复盘")
     p.add_argument("problem", nargs="?", help="练习区只有一道题时可省略")
     p.add_argument("--optimal", choices=["yes", "no"], help="这次是否一步写出最优解；省略则交互询问")
     p.set_defaults(func=cmd_done)
+
+    categories = " / ".join(f"{e}（{n}）" for n, e in MISTAKE_CATEGORIES.items())
+    p = sub.add_parser("oops", help="记一个错进错题本；不给 -m / -c 就逐项询问")
+    p.add_argument("problem", nargs="?", help="省略则记在练习区唯一那道题上")
+    p.add_argument("-m", metavar="错在哪", help="犯了什么错")
+    p.add_argument("-f", metavar="正确写法", help="应该怎么写（可省略）")
+    p.add_argument("-c", metavar="类别", help=f"类别：{categories}")
+    p.set_defaults(func=cmd_oops)
+
+    p = sub.add_parser("mistakes", help="翻错题本：按类别列出记过的错，最新的在前")
+    p.add_argument("problem", nargs="?", help="只看某道题")
+    p.add_argument("-c", metavar="类别", help=f"只看某个类别：{categories}")
+    p.set_defaults(func=cmd_mistakes)
 
     p = sub.add_parser("next", help="按复习间隔列出最该重做的题")
     p.add_argument("-n", type=int, default=10, help="列出几道，默认 10")
@@ -1036,6 +1197,9 @@ def run(argv: list) -> int:
         return e.code if isinstance(e.code, int) else 1
 
 
+IN_MENU = False  # set while the interactive menu runs, so commands can leave out command-line instructions
+
+
 class MenuExit(Exception):
     """Raised on 0, Ctrl-D or Ctrl-C to leave the menu."""
 
@@ -1078,10 +1242,53 @@ def round_tag_counts(difficulty) -> list:
     return sorted(((t, d, n) for t, (d, n) in counts.items()), key=lambda x: (-(x[2] - x[1]), x[0]))
 
 
-def offer_start():
+def offer_start() -> bool:
     answer = ask("\n输入题号开始做（回车返回菜单）: ")
-    if answer:
-        run(["start", answer])
+    return bool(answer) and start_and_practice(answer)
+
+
+def start_and_practice(query: str) -> bool:
+    """Starts the problem unless it is already in the practice area, then opens its practice menu; True if opened."""
+    try:
+        problem = find_problem(query)
+    except SystemExit:
+        return False
+    if practice_file(problem).exists():
+        print("这道题已经在练习区，接着做")
+    elif run(["start", problem.ref]) != 0:
+        return False
+    practice_menu(problem)
+    return True
+
+
+def practice_menu(problem: Problem):
+    """Test / hint / mistake / archive loop for one problem; leaves once it is archived or on 0."""
+    ref = problem.ref
+    actions = [
+        ("测试（没通过的只说答案不对 / 运行出错 / 超时）", ["test", ref, "--brief"]),
+        ("测试（显示输入、期望输出、实际输出和报错位置）", ["test", ref]),
+        ("要一层提示", ["hint", ref]),
+        ("记一个错进错题本", ["oops", ref]),
+        ("归档并复盘", ["done", ref]),
+    ]
+    while practice_file(problem).exists():
+        entry = load_state().get(problem.key, {})
+        minutes = ""
+        if entry.get("start"):
+            minutes = f"，已做 {round((datetime.now() - datetime.fromisoformat(entry['start'])).total_seconds() / 60)} 分钟"
+        print(f"\n── 正在做 {problem.notes()['title']}（已用 {entry.get('hints', 0)} 层提示{minutes}）")
+        print(f"   在编辑器里改 {rel(practice_file(problem))}，然后在这里选:")
+        for i, (label, _) in enumerate(actions, 1):
+            print(f"  {i}. {label}")
+        print("  0. 回主菜单（练习文件留着，之后可以接着做）")
+        answer = ask("选择编号: ")
+        if answer == "0":
+            return
+        if not answer.isdigit() or not 1 <= int(answer) <= len(actions):
+            print("没有这个编号")
+            continue
+        print()
+        run(actions[int(answer) - 1][1])
 
 
 def choose_difficulty():
@@ -1096,7 +1303,7 @@ def menu_practice():
         return
     tag = choose("题型（括号里是本轮已做 / 总数）", [(f"{t}（{d}/{n}）", t) for t, d, n in counts])
     run(["list"] + (["-d", difficulty] if difficulty else []) + (["-t", tag] if tag else []))
-    offer_start()
+    return offer_start()
 
 
 def menu_new_round():
@@ -1107,25 +1314,38 @@ def menu_new_round():
 
 def menu_start():
     answer = ask("题号或题名片段: ")
-    if answer:
-        run(["start", answer])
+    return bool(answer) and start_and_practice(answer)
 
 
-def menu_on_practice(command: str):
+def menu_continue():
     current = practicing()
     if not current:
         print("练习区是空的，先选一道题开始做")
         return
     target = current[0] if len(current) == 1 else choose(
         "练习区里有几道题，选一道", [(p.notes()["title"], p) for p in current], allow_all=False)
-    run([command, target.ref])
+    practice_menu(target)
+    return True
+
+
+def menu_oops():
+    current = practicing()
+    default = f"，回车 = {current[0].notes()['title']}" if len(current) == 1 else ""
+    answer = ask(f"记在哪道题上（题号或题名片段{default}）: ")
+    if answer or default:
+        run(["oops", answer or current[0].ref])
+
+
+def menu_mistakes():
+    category = choose("类别", [(name, name) for name in MISTAKE_CATEGORIES])
+    run(["mistakes"] + (["-c", category] if category else []))
 
 
 def menu_next():
     difficulty = choose_difficulty()
     tag = ask("题型（中英文都行，回车 = 全部）: ")
     run(["next"] + (["-d", difficulty] if difficulty else []) + (["-t", tag] if tag else []))
-    offer_start()
+    return offer_start()
 
 
 def menu_plan():
@@ -1136,21 +1356,29 @@ def menu_plan():
     slug = plans[0]["slug"] if len(plans) == 1 else choose(
         "题单", [(p["name"], p["slug"]) for p in plans], allow_all=False)
     run(["plan", slug])
-    offer_start()
+    return offer_start()
 
 
 def menu_new():
     title = ask('题目（如 "42. Trapping Rain Water"）: ')
-    if title:
-        run(["new", title])
+    if not title:
+        return
+    before = {p.key for p in practicing()}
+    if run(["new", title]) == 0:
+        added = [p for p in practicing() if p.key not in before]
+        if added:
+            practice_menu(added[0])
+            return True
+    return False
 
 
+# Each action returns True when it ended in the practice menu, which needs no extra "press Enter" pause.
 MENU = [
     ("刷题：按难度 → 题型选（新题和做过的题都在，本轮做过的不列）", menu_practice),
     ("开始做指定的题（输入题号）", menu_start),
-    ("测试练习区的解答", lambda: menu_on_practice("test")),
-    ("要一层提示", lambda: menu_on_practice("hint")),
-    ("归档并复盘", lambda: menu_on_practice("done")),
+    ("接着做练习区里的题（测试 / 提示 / 记错 / 归档）", menu_continue),
+    ("记一个错进错题本", menu_oops),
+    ("翻错题本", menu_mistakes),
     ("复习：按遗忘间隔排出最该重做的题", menu_next),
     ("题单进度", menu_plan),
     ("开始新一轮", menu_new_round),
@@ -1161,7 +1389,11 @@ MENU = [
 
 
 def menu():
+    global IN_MENU
+    IN_MENU = True
     try:
+        if practicing():
+            menu_continue()
         while True:
             state = load_state()
             current = practicing()
@@ -1182,8 +1414,8 @@ def menu():
             if not answer.isdigit() or not 1 <= int(answer) <= len(MENU):
                 print("没有这个编号")
                 continue
-            MENU[int(answer) - 1][1]()
-            ask("\n回车返回菜单")
+            if not MENU[int(answer) - 1][1]():
+                ask("\n回车返回菜单")
     except MenuExit:
         return
 
