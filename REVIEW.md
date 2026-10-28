@@ -2,7 +2,247 @@
 
 由 `python3 lc.py index` 根据各题 notes.md 生成，改笔记后重新运行即可。
 
-## 双指针（15）
+## 哈希表（23）
+
+- [1. Two Sum](problems/0001_two_sum/notes.md)
+  - 识别信号：在数组里找"两个数之和等于 target"，并且要返回下标（排序会打乱原位置）；换个说法：对每个数，查"target − 它"有没有出现过
+  - 关键一步：遍历到 nums[i] 时，先查 target − nums[i] 是否已在哈希表里；查不到再把 nums[i] 存进去。
+- [3. Longest Substring Without Repeating Characters](problems/0003_longest_substring_without_repeating_characters/notes.md)
+  - 识别信号：求满足条件（无重复字符）的"最长连续子串"；右端加入一个字符时，只需看这个字符是否已经在窗口里，可以 O(1) 判断
+  - 关键一步：哈希表记录每个字符最后出现的下标；遇到重复字符时，只有它上次出现的位置还在窗口内（≥ l）才把左端移到该位置 + 1，左端只往右走。
+- [13. Roman to Integer](problems/0013_roman_to_integer/notes.md)
+  - 识别信号：按固定的符号表把字符串翻译成数值；"小数在大数左边表示相减"只有 6 种组合：IV、IX、XL、XC、CD、CM
+  - 关键一步：先看当前位置和下一个位置组成的两个字符是否在表里（减法组合），在就整体加上并跳两格，不在就只加当前字符。
+- [36. Valid Sudoku](problems/0036_valid_sudoku/notes.md)
+  - 识别信号：只判断已填数字在每行、每列、每个 3×3 宫内不重复，不要求数独能解；判重 → 哈希表 / 集合；棋盘固定 9×9
+  - 关键一步：用宫号公式 (i // 3)·3 + j // 3 把格子归到所在的 3×3 宫，这样行、列、宫的判重可以在同一遍扫描里完成。
+- [49. Group Anagrams](problems/0049_group_anagrams/notes.md)
+  - 识别信号：把"字母相同、顺序不同"的字符串分到同一组；分组 → 给每组找一个相同的、可哈希的"签名"做字典键
+  - 关键一步：把"互为异位词"转成"签名相同"：签名必须可哈希，排序后的字符串或计数元组都可以，dict 不行。
+- [73. Set Matrix Zeroes](problems/0073_set_matrix_zeroes/notes.md)
+  - 识别信号：原地修改矩阵，某个格子是 0 会影响它所在的整行和整列；边扫边改会让新写入的 0 继续"传染"，必须先记录、后修改
+  - 关键一步：分两遍：先标记含 0 的行和列，再清零；O(1) 空间版本把这些标记存在第一行和第一列里。
+- [105. Construct Binary Tree from Preorder and Inorder Traversal](problems/0105_construct_binary_tree_from_preorder_and_inorder_traversal/notes.md)
+  - 识别信号：用两种遍历序列还原树：前序的第一个元素是根，中序里根左边是左子树、右边是右子树；节点值互不相同，可以用值在中序里唯一定位根
+  - 关键一步：前序的第一个元素是根，它在中序中的位置把中序分成左右两棵子树，左子树的节点个数决定了前序里左右子树的分界。
+- [106. Construct Binary Tree from Inorder and Postorder Traversal](problems/0106_construct_binary_tree_from_inorder_and_postorder_traversal/notes.md)
+  - 识别信号：用两种遍历序列还原树：后序的最后一个元素是根，中序里根左边是左子树、右边是右子树；节点值互不相同，可以用值在中序里唯一定位根
+  - 关键一步：后序的最后一个元素是根，它在中序中的位置把中序分成左右两棵子树；从后序末尾往前取，依次得到的是 根 → 右子树 → 左子树 的根。
+- [127. Word Ladder](problems/0127_word_ladder/notes.md)
+  - 识别信号：每次只能改一个字母，中间词必须在 wordList 里 → 隐式图，边是"只差一个字母"；求最短转换序列的长度 → 无权图上的最短路；wordList 可达 5000，两两比较建图会超时，需要更快地找邻居
+  - 关键一步：不预先建图：BFS 中对当前词逐位替换 26 个字母来生成邻居并查集合，访问过的词立刻从集合里删掉；层数就是序列长度。
+- [128. Longest Consecutive Sequence](problems/0128_longest_consecutive_sequence/notes.md)
+  - 识别信号：数组未排序，求值连续的最长序列长度（不要求在原数组中相邻）；题目要求 O(n) 时间，排除了排序，提示用哈希集合 O(1) 查"x+1 在不在"
+  - 关键一步：只从 x − 1 不在集合中的 x 开始向上延伸，这样每个连续段只被完整扫描一次。
+- [133. Clone Graph](problems/0133_clone_graph/notes.md)
+  - 识别信号：深拷贝一个可能带环的结构（无向图），节点之间互相引用；同一个节点会从多条边被走到，需要"原节点 → 克隆节点"的对应关系来避免重复复制和死循环
+  - 关键一步：新建克隆节点后要先把它放进哈希表，再去处理邻居：这样沿着环绕回来时能直接拿到这个克隆，而不会再复制一次或陷入死循环。
+- [138. Copy List with Random Pointer](problems/0138_copy_list_with_random_pointer/notes.md)
+  - 识别信号：深拷贝一个带 random 指针的链表，新链表不能指向原链表的任何节点；random 可能指向后面还没复制的节点，需要"原节点 → 新节点"的对应关系
+  - 关键一步：先建立"原节点 → 新节点"的映射，再统一连 random，这样 random 指向的节点一定已经存在。
+- [139. Word Break](problems/0139_word_break/notes.md)
+  - 识别信号：判断字符串能否切分成字典里的单词，单词可以重复使用；s[:i] 能否切分取决于某个更短的前缀 s[:j] 能否切分、且 s[j:i] 是单词，子问题大量重叠
+  - 关键一步：把"整串能否切分"拆成"某个前缀能切分 + 最后一段是字典里的单词"：dp[i] = 存在 j 使 dp[j] 为真且 s[j:i] 是单词。
+- [141. Linked List Cycle](problems/0141_linked_list_cycle/notes.md)
+  - 识别信号：判断链表是否有环；进阶要求 O(1) 额外空间，提示快慢指针
+  - 关键一步：快指针每步比慢指针多走 1 步，进环后两者距离每步缩小 1，一定会相遇。
+- [146. LRU Cache](problems/0146_lru_cache/notes.md)
+  - 识别信号：get 和 put 都要求 O(1) 平均时间；容量满时要淘汰"最久未使用"的键，而每次 get 或 put 都会改变使用顺序
+  - 关键一步：哈希表直接定位到双向链表里的节点，双向链表让任意节点 O(1) 摘下并移到最新端，两者结合才能让 get 和 put 都是 O(1)。
+- [149. Max Points on a Line](problems/0149_max_points_on_a_line/notes.md)
+  - 识别信号：求最多有多少个点在同一条直线上，n ≤ 300，O(n²) 可行、O(n³) 偏慢；经过一个固定点的直线由斜率唯一确定，可以按斜率分组计数
+  - 关键一步：固定一个点之后，"和它共线"等价于"相对它的斜率相同"，问题就变成用哈希表找出现次数最多的斜率。
+- [202. Happy Number](problems/0202_happy_number/notes.md)
+  - 识别信号：反复做同一个变换，结果要么到达 1，要么无限循环；判断"是否进入循环"：记录见过的值，或者用快慢指针判环
+  - 关键一步：平方和序列只能到 1 或进入循环，问题等价于判环：见过的数再次出现，就不是快乐数。
+- [205. Isomorphic Strings](problems/0205_isomorphic_strings/notes.md)
+  - 识别信号：两个字符串逐位置对应，判断能否在字符之间建立映射；"不同字符不能映射到同一个字符"，说明映射必须是一一对应
+  - 关键一步：只记 s → t 不够，还要记 t → s：s 里一个新字符想映射到的 t 字符如果已经被别的字符占用，就不同构（"badc" 和 "baba"）。
+- [219. Contains Duplicate II](problems/0219_contains_duplicate_ii/notes.md)
+  - 识别信号：判断是否存在两个相等的元素，且下标差 ≤ k；"距离不超过 k"：只关心每个值上一次出现的位置，或者维护长度为 k 的窗口
+  - 关键一步：对同一个值，最近一次出现离当前位置最近；它都超过 k，更早的只会更远。
+- [290. Word Pattern](problems/0290_word_pattern/notes.md)
+  - 识别信号：pattern 的字母和 s 的单词之间要"一一对应"（双射）：同一字母只能对应同一单词，不同字母不能对应同一单词；需要记录"已经见过的映射"，并能 O(1) 反查
+  - 关键一步：双射要两个方向都检查：新单词第一次出现时，它要对应的字母必须还没被别的单词占用。
+- [380. Insert Delete GetRandom O(1)](problems/0380_insert_delete_getrandom_o_1/notes.md)
+  - 识别信号：要求 insert、remove、getRandom 都是平均 O(1)；哈希表能 O(1) 增删查，但不能 O(1) 等概率随机取；数组能 O(1) 随机取，但不能 O(1) 删除中间元素，需要把两者结合
+  - 关键一步：删除中间元素时，用数组末尾元素覆盖被删位置、更新末尾元素在哈希表里的下标，再 pop 末尾，避免数组整体移位。
+- [433. Minimum Genetic Mutation](problems/0433_minimum_genetic_mutation/notes.md)
+  - 识别信号：每次只能改一个字符，而且中间结果必须在 bank 里 → 状态图，边是"只差一个字符"；求最少突变次数 → 无权图上的最短路
+  - 关键一步：把"一次突变"看成图上的一条边：候选邻居由逐位替换成 A、C、G、T 直接生成，再查 bank 集合判断是否合法；BFS 的层数就是最少突变次数。
+- [Booking: Award Top K Hotels](problems/booking_award_topk_hotels/notes.md)
+  - 识别信号：题目（HackerRank，Booking 面试题）：给出正面关键词串 positiveKeywords、负面关键词串 negativeKeywords（空格分隔），以及等长的 hotelIds 和 reviews（第 i 条评论属于 hotelIds[i]）。评论中每出现一次正面词加 3 分、负面词减 1 分；匹配不区分大小写，单词按空白切分并去掉首尾的 . , ! ?。同一酒店的分数累加，返回得分最高的 k 个酒店 id，同分按 id 升序；不足 k 个就全部返回；"按某个 key 累加分数"用哈希表，"取前 k 名、多关键字排序"用排序（或大小为 k 的堆）
+  - 关键一步：排序键写成 (−分数, id)：分数降序、同分时 id 升序一次完成。
+
+## 二叉树（20）
+
+- [94. Binary Tree Inorder Traversal](problems/0094_binary_tree_inorder_traversal/notes.md)
+  - 识别信号：要求按"左子树 → 根 → 右子树"的顺序输出节点值；进阶要求不用递归，提示要用显式栈模拟递归
+  - 关键一步：中序就是"一路向左走到底，回来时记录当前节点，再去右子树"；递归和栈写法都只是在实现这个顺序。
+- [100. Same Tree](problems/0100_same_tree/notes.md)
+  - 识别信号：判断两棵树结构和节点值是否完全相同；结论可以拆成"根相同 且 左子树相同 且 右子树相同"
+  - 关键一步：先处理"两个都空"和"只有一个空"这两种情况，剩下的就是值比较加左右递归。
+- [101. Symmetric Tree](problems/0101_symmetric_tree/notes.md)
+  - 识别信号：判断树是否是自身的镜像，也就是左子树和右子树互为镜像；进阶要求递归和迭代两种写法
+  - 关键一步：比较的是成对的节点：左边的左孩子对右边的右孩子，左边的右孩子对右边的左孩子。
+- [102. Binary Tree Level Order Traversal](problems/0102_binary_tree_level_order_traversal/notes.md)
+  - 识别信号：输出是"按层分组"的二维列表，每层内从左到右；层序遍历的模板题，后续很多按层处理的题都基于它
+  - 关键一步：用"处理这一层之前的队列长度"作为层的边界：这一轮只出队这么多个节点，它们就是同一层，期间新入队的孩子留给下一轮。
+- [103. Binary Tree Zigzag Level Order Traversal](problems/0103_binary_tree_zigzag_level_order_traversal/notes.md)
+  - 识别信号：按层输出，但相邻两层方向交替（左到右、右到左）；本质是层序遍历，只是写入每层结果时方向不同
+  - 关键一步：节点的遍历顺序永远和普通层序遍历一样，"之字形"只体现在把值写进本层列表的方向上：根据层号奇偶选择从尾部追加还是从头部插入。
+- [104. Maximum Depth of Binary Tree](problems/0104_maximum_depth_of_binary_tree/notes.md)
+  - 识别信号：求根到最远叶子的节点数；整棵树的答案可以由左右子树的答案合成：max(左深度, 右深度) + 1
+  - 关键一步：深度 = max(左子树深度, 右子树深度) + 1，空节点深度为 0。
+- [105. Construct Binary Tree from Preorder and Inorder Traversal](problems/0105_construct_binary_tree_from_preorder_and_inorder_traversal/notes.md)
+  - 识别信号：用两种遍历序列还原树：前序的第一个元素是根，中序里根左边是左子树、右边是右子树；节点值互不相同，可以用值在中序里唯一定位根
+  - 关键一步：前序的第一个元素是根，它在中序中的位置把中序分成左右两棵子树，左子树的节点个数决定了前序里左右子树的分界。
+- [106. Construct Binary Tree from Inorder and Postorder Traversal](problems/0106_construct_binary_tree_from_inorder_and_postorder_traversal/notes.md)
+  - 识别信号：用两种遍历序列还原树：后序的最后一个元素是根，中序里根左边是左子树、右边是右子树；节点值互不相同，可以用值在中序里唯一定位根
+  - 关键一步：后序的最后一个元素是根，它在中序中的位置把中序分成左右两棵子树；从后序末尾往前取，依次得到的是 根 → 右子树 → 左子树 的根。
+- [108. Convert Sorted Array to Binary Search Tree](problems/0108_convert_sorted_array_to_binary_search_tree/notes.md)
+  - 识别信号：输入是升序数组，要构造高度平衡的二叉搜索树；升序数组就是 BST 的中序遍历；"平衡"提示每次取中间元素当根
+  - 关键一步：取区间中点作为根：左右两段大小最多差 1，整棵树自然高度平衡，且中序仍是原数组。
+- [110. Balanced Binary Tree](problems/0110_balanced_binary_tree/notes.md)
+  - 识别信号：判断每个节点左右子树高度差是否都不超过 1；既要子树的"是否平衡"，又要子树的"高度"，适合后序遍历一次返回两样信息
+  - 关键一步：用 -1 表示"已不平衡"，非负数表示高度，一个返回值同时带回两种信息，每个节点只算一次。
+- [112. Path Sum](problems/0112_path_sum/notes.md)
+  - 识别信号：判断是否存在一条从根到叶子的路径，路径和等于目标值；路径必须走到叶子
+  - 关键一步：只在叶子（左右孩子都为空）处判断是否命中目标，往下递归时把目标值减去当前节点的值。
+- [114. Flatten Binary Tree to Linked List](problems/0114_flatten_binary_tree_to_linked_list/notes.md)
+  - 识别信号：展开后的节点顺序就是前序遍历的顺序；要求原地修改（函数返回 None），进阶要求 O(1) 额外空间
+  - 关键一步：前序里，右子树紧跟在左子树的最后一个节点（左子树最右边的节点）之后，所以把右子树接到这个节点的 right 上，再把左子树整体挪到右边，就完成了当前节点的展开。
+- [117. Populating Next Right Pointers in Each Node II](problems/0117_populating_next_right_pointers_in_each_node_ii/notes.md)
+  - 识别信号：要把同一层的节点从左到右串起来，是按层处理；不是完美二叉树，有的节点缺孩子，下一层相邻的两个节点可能来自不相邻的父节点；进阶要求只用常数额外空间（递归栈不算）
+  - 关键一步：第 i 层连好之后就是一条链表，沿着它走就能按从左到右的顺序拿到第 i + 1 层的全部孩子，用哑节点把这些孩子串起来，就连好了第 i + 1 层。
+- [124. Binary Tree Maximum Path Sum](problems/0124_binary_tree_maximum_path_sum/notes.md)
+  - 识别信号：路径可以从任意节点开始、在任意节点结束，不一定经过根，求最大路径和；节点值可以为负；任何一条路径都有一个最高的节点，路径从那里向左、向右各往下延伸一段（也可以不延伸）
+  - 关键一步：函数返回给父节点的值只能是一侧的单链（父节点还要接上它），而全局答案是在当前节点拐弯、左右两侧都可以取；负的单链贡献直接当作 0 不要。
+- [129. Sum Root to Leaf Numbers](problems/0129_sum_root_to_leaf_numbers/notes.md)
+  - 识别信号：每条根到叶子的路径拼成一个数，从上往下逐位累积（前面的数乘 10 加上当前位）
+  - 关键一步：往下传已经组成的数 cur，子节点对应的数就是 cur × 10 + 子节点的值，到叶子时累加到答案里。
+- [199. Binary Tree Right Side View](problems/0199_binary_tree_right_side_view/notes.md)
+  - 识别信号：从右边看，每一层只能看到最右边的一个节点，答案就是"每层的最后一个节点"；输出按从上到下的层排列，层数就是答案长度
+  - 关键一步：每一层只要"最右边那一个"：BFS 时用处理前的队列长度划出一层，这层最后出队的节点就是答案；DFS 先走右子树，当 depth == len(ans) 时说明这一层还没记录，当前节点就是该层最右。
+- [222. Count Complete Tree Nodes](problems/0222_count_complete_tree_nodes/notes.md)
+  - 识别信号：树是完全二叉树：除最后一层外都是满的，最后一层的节点都靠左；题目要求设计低于 O(n) 的算法，不能把节点逐个数一遍
+  - 关键一步：完全二叉树的左右子树中至少有一棵是满二叉树，满二叉树的节点数由高度直接算出，所以每一层只需要递归另一棵子树。
+- [226. Invert Binary Tree](problems/0226_invert_binary_tree/notes.md)
+  - 识别信号：每个节点做同一件事（交换左右孩子），整棵树的结果由左右子树各自的结果拼成
+  - 关键一步：对每个节点交换它的左右孩子，左右子树再各自做同样的事；先交换还是先递归都可以，不影响结果。
+- [236. Lowest Common Ancestor of a Binary Tree](problems/0236_lowest_common_ancestor_of_a_binary_tree/notes.md)
+  - 识别信号：求两个节点的最低公共祖先（LCA，同时是两者祖先的节点里最深的那个），并且是普通二叉树，没有 BST 的大小关系可用；p、q 一定在树里且不相同，节点值唯一；一个节点可以是它自己的祖先
+  - 关键一步：后序递归时，如果左右子树都找到了目标，当前节点就是最低公共祖先；遇到 p 或 q 本身就直接返回，不用再往下找，因为另一个如果在它下面，答案就是它自己。
+- [637. Average of Levels in Binary Tree](problems/0637_average_of_levels_in_binary_tree/notes.md)
+  - 识别信号：要求"每一层"的统计量（平均值），需要按层把节点分组；输出长度等于树的层数
+  - 关键一步：BFS 处理一层之前先记下 len(queue)，这一批出队的节点正好是这一层的全部节点，把它们的值加起来再除以这个个数。
+
+## 动态规划（17）
+
+- [53. Maximum Subarray](problems/0053_maximum_subarray/notes.md)
+  - 识别信号：求和最大的非空连续子数组，只要最大和、不要求位置；n 可达 10^5，枚举所有子数组 O(n²) 会超时；"以每个位置结尾的最优解"只和前一个位置有关
+  - 关键一步：以 i 结尾的最大子数组，要么接在以 i − 1 结尾的最优子数组后面，要么从 i 重新开始；前面累计的和是负数就丢掉。
+- [63. Unique Paths II](problems/0063_unique_paths_ii/notes.md)
+  - 识别信号：网格只能向右或向下走，求从左上到右下的路径条数；有障碍格；到某格的路径数 = 到它上方的路径数 + 到它左方的路径数
+  - 关键一步：障碍格的路径数直接置 0，它就自动不会向右边和下边贡献路径；其他格子照常是上方加左方。
+- [64. Minimum Path Sum](problems/0064_minimum_path_sum/notes.md)
+  - 识别信号：网格从左上走到右下，只能向右或向下，求路径和的最小值；每个格子只能从上方或左方到达，到达它的最优值只依赖这两个格子
+  - 关键一步：到达 (i, j) 的最小路径和只取决于到达上方和左方两个格子的最小路径和，按行从左到右填表就能保证用到的值都已算好。
+- [70. Climbing Stairs](problems/0070_climbing_stairs/notes.md)
+  - 识别信号：求"有多少种走法"，每一步只有固定几种选择（1 阶或 2 阶）；到第 i 阶的方案数只依赖前一两阶的结果
+  - 关键一步：最后一步不是跨 1 阶就是跨 2 阶，所以 f(n) = f(n − 1) + f(n − 2)，就是斐波那契数列。
+- [72. Edit Distance](problems/0072_edit_distance/notes.md)
+  - 识别信号：两个字符串，允许插入、删除、替换，求把一个变成另一个的最少操作次数；问题可以按两个字符串的前缀拆分：只看两个前缀的最后一个字符怎么处理
+  - 关键一步：只看两个前缀的最后一个字符：删除、插入、替换分别对应从上方、左方、左上方的格子转移过来，字符相同则直接继承左上方。
+- [97. Interleaving String](problems/0097_interleaving_string/notes.md)
+  - 识别信号：判断 s3 能否由 s1 和 s2 各自保持原顺序交错拼成；s3 下一个字符可能同时等于 s1 和 s2 的下一个字符，不知道该用哪边，需要尝试两种选择；"s1 用了前 i 个、s2 用了前 j 个"这一状态就决定了后面能否成功
+  - 关键一步：状态只需要 (i, j)：s3 已经匹配的长度一定是 i + j，不用单独记 s3 的下标。
+- [120. Triangle](problems/0120_triangle/notes.md)
+  - 识别信号：从顶到底一步只能走到下一行相邻的两个位置，求路径和的最小值；同一个位置可以从上一行两个位置到达，不同路径会经过相同的格子（重叠子问题）
+  - 关键一步：从底往上算：每个位置下方都恰好有两个相邻位置可选，没有边界情况，最后所有路径汇聚到顶点 dp[0]。
+- [121. Best Time to Buy and Sell Stock](problems/0121_best_time_to_buy_and_sell_stock/notes.md)
+  - 识别信号：只买卖一次，且必须先买后卖，求 prices[j] − prices[i]（i < j）的最大值；对每个卖出日，最优买入价就是它之前的最低价
+  - 关键一步：从左往右扫，维护目前为止的最低价 min，每天的最大利润就是 price − min。
+- [123. Best Time to Buy and Sell Stock III](problems/0123_best_time_to_buy_and_sell_stock_iii/notes.md)
+  - 识别信号：买卖股票，最多完成两笔交易，且手上最多持有一股；每天能做什么只取决于"已经完成了几次买卖、现在手里有没有股票"
+  - 关键一步：把"第几次买入、第几次卖出"做成状态：第二次买入的成本从第一次卖出后的余额里扣，这样一次遍历就同时管住两笔交易。
+- [124. Binary Tree Maximum Path Sum](problems/0124_binary_tree_maximum_path_sum/notes.md)
+  - 识别信号：路径可以从任意节点开始、在任意节点结束，不一定经过根，求最大路径和；节点值可以为负；任何一条路径都有一个最高的节点，路径从那里向左、向右各往下延伸一段（也可以不延伸）
+  - 关键一步：函数返回给父节点的值只能是一侧的单链（父节点还要接上它），而全局答案是在当前节点拐弯、左右两侧都可以取；负的单链贡献直接当作 0 不要。
+- [139. Word Break](problems/0139_word_break/notes.md)
+  - 识别信号：判断字符串能否切分成字典里的单词，单词可以重复使用；s[:i] 能否切分取决于某个更短的前缀 s[:j] 能否切分、且 s[j:i] 是单词，子问题大量重叠
+  - 关键一步：把"整串能否切分"拆成"某个前缀能切分 + 最后一段是字典里的单词"：dp[i] = 存在 j 使 dp[j] 为真且 s[j:i] 是单词。
+- [188. Best Time to Buy and Sell Stock IV](problems/0188_best_time_to_buy_and_sell_stock_iv/notes.md)
+  - 识别信号：买卖股票，最多完成 k 笔交易，手上最多持有一股（123 题"最多两笔"的推广）；状态可以用"已经做到第几笔交易 + 现在是否持有股票"完整描述
+  - 关键一步：第 j 次买入的成本从"完成 j−1 笔交易后的最大利润"里扣：buy[j] = max(buy[j], sell[j−1] − price)，于是 k 笔交易就是把 123 题的两组状态扩成 k 组。
+- [198. House Robber](problems/0198_house_robber/notes.md)
+  - 识别信号：每个位置选或不选，相邻的两个不能同时选，求最大总和；前 i 间房的最优解只依赖前 i - 1 间和前 i - 2 间的最优解
+  - 关键一步：对第 i 间房只有两种选择：不偷，得 dp[i - 1]；偷，则第 i - 1 间不能偷，得 dp[i - 2] + nums[i - 1]，两者取较大值。
+- [221. Maximal Square](problems/0221_maximal_square/notes.md)
+  - 识别信号：在由 '0' / '1' 组成的矩阵里找全为 '1' 的最大正方形，返回面积；以某个格子为右下角的最大正方形，可以由它上方、左方、左上方的格子推出来
+  - 关键一步：以 (i, j) 为右下角能形成边长 k 的正方形，当且仅当上方、左方、左上方三个格子都能撑起边长 k−1 的正方形，所以取三者最小值再加 1。
+- [300. Longest Increasing Subsequence](problems/0300_longest_increasing_subsequence/notes.md)
+  - 识别信号：求"子序列"（可以不连续、保持原顺序）的最长长度，条件是严格递增；以某个元素结尾的最优结果，只依赖它前面比它小的元素的结果
+  - 关键一步：长度相同的递增子序列，结尾越小越容易被后面的数接上，所以每个长度只记最小的结尾；这个数组天然递增，新数字用二分找到它该替换的位置。
+- [322. Coin Change](problems/0322_coin_change/notes.md)
+  - 识别信号：每种硬币数量无限，求凑出目标金额的最少硬币数（完全背包求最小值）；先用大面额的贪心不一定最优，例如 coins = [1, 3, 4]、amount = 6
+  - 关键一步：dp[a] = min(dp[a - c] + 1)：凑出 a 的最优方案去掉最后一枚硬币 c 之后，剩下的一定是凑出 a - c 的最优方案。
+- [918. Maximum Sum Circular Subarray](problems/0918_maximum_sum_circular_subarray/notes.md)
+  - 识别信号：53 题（最大子数组和）的环形版本：子数组可以从尾部绕回头部，但每个元素最多用一次；绕过首尾的子数组 = 整个数组去掉中间连续的一段
+  - 关键一步：跨首尾的子数组 = 整个数组去掉中间一段，所以它的最大和 = total − 最小子数组和；再和不跨首尾的最大子数组和取较大者。
+
+## DFS（16）
+
+- [79. Word Search](problems/0079_word_search/notes.md)
+  - 识别信号：在网格上沿上下左右相邻的格子拼出单词，同一格不能重复使用 → 路径搜索 + 访问标记；只问"是否存在"一条路径，但不同路径会共用格子 → 走不通时要撤销标记再试别的方向
+  - 关键一步：进入格子时标记、四个方向都试完后恢复：这样一条路径不会重复用格子，而失败的路径也不会挡住其他路径。
+- [98. Validate Binary Search Tree](problems/0098_validate_binary_search_tree/notes.md)
+  - 识别信号：判断一棵树是否满足 BST 定义：左子树所有节点都小于根、右子树所有节点都大于根，且左右子树也都是 BST；关键是"整棵子树"，不只是直接孩子
+  - 关键一步：每个节点的合法取值是一个开区间 (low, high)，它由路径上所有祖先共同决定：往左走把 high 改成当前节点值，往右走把 low 改成当前节点值，节点值不在区间内就不是 BST。
+- [112. Path Sum](problems/0112_path_sum/notes.md)
+  - 识别信号：判断是否存在一条从根到叶子的路径，路径和等于目标值；路径必须走到叶子
+  - 关键一步：只在叶子（左右孩子都为空）处判断是否命中目标，往下递归时把目标值减去当前节点的值。
+- [114. Flatten Binary Tree to Linked List](problems/0114_flatten_binary_tree_to_linked_list/notes.md)
+  - 识别信号：展开后的节点顺序就是前序遍历的顺序；要求原地修改（函数返回 None），进阶要求 O(1) 额外空间
+  - 关键一步：前序里，右子树紧跟在左子树的最后一个节点（左子树最右边的节点）之后，所以把右子树接到这个节点的 right 上，再把左子树整体挪到右边，就完成了当前节点的展开。
+- [124. Binary Tree Maximum Path Sum](problems/0124_binary_tree_maximum_path_sum/notes.md)
+  - 识别信号：路径可以从任意节点开始、在任意节点结束，不一定经过根，求最大路径和；节点值可以为负；任何一条路径都有一个最高的节点，路径从那里向左、向右各往下延伸一段（也可以不延伸）
+  - 关键一步：函数返回给父节点的值只能是一侧的单链（父节点还要接上它），而全局答案是在当前节点拐弯、左右两侧都可以取；负的单链贡献直接当作 0 不要。
+- [129. Sum Root to Leaf Numbers](problems/0129_sum_root_to_leaf_numbers/notes.md)
+  - 识别信号：每条根到叶子的路径拼成一个数，从上往下逐位累积（前面的数乘 10 加上当前位）
+  - 关键一步：往下传已经组成的数 cur，子节点对应的数就是 cur × 10 + 子节点的值，到叶子时累加到答案里。
+- [130. Surrounded Regions](problems/0130_surrounded_regions/notes.md)
+  - 识别信号：要把"被 'X' 完全包围"的 'O' 区域翻成 'X'；区域是上下左右连通的 'O'；一个区域没被包围 ⇔ 它和边界上的某个 'O' 连通——判断"能否到达边界"比判断"是否被包围"容易
+  - 关键一步：不去找"被包围的"区域，而是从边界上的 'O' 出发找出所有"逃得出去的" 'O' 并做标记；没被标记到的 'O' 一定被包围，全部翻转。
+- [133. Clone Graph](problems/0133_clone_graph/notes.md)
+  - 识别信号：深拷贝一个可能带环的结构（无向图），节点之间互相引用；同一个节点会从多条边被走到，需要"原节点 → 克隆节点"的对应关系来避免重复复制和死循环
+  - 关键一步：新建克隆节点后要先把它放进哈希表，再去处理邻居：这样沿着环绕回来时能直接拿到这个克隆，而不会再复制一次或陷入死循环。
+- [199. Binary Tree Right Side View](problems/0199_binary_tree_right_side_view/notes.md)
+  - 识别信号：从右边看，每一层只能看到最右边的一个节点，答案就是"每层的最后一个节点"；输出按从上到下的层排列，层数就是答案长度
+  - 关键一步：每一层只要"最右边那一个"：BFS 时用处理前的队列长度划出一层，这层最后出队的节点就是答案；DFS 先走右子树，当 depth == len(ans) 时说明这一层还没记录，当前节点就是该层最右。
+- [200. Number of Islands](problems/0200_number_of_islands/notes.md)
+  - 识别信号：二维网格，上下左右相邻的 '1' 连成一块，求块（连通分量）的个数；典型的网格连通分量计数
+  - 关键一步：扫描到一个还没访问过的 '1' 时答案加 1，并立刻把它所在的整座岛"淹掉"（全部标记为已访问），这样同一座岛的其他格子之后都会被跳过，每座岛只被数一次。
+- [211. Design Add and Search Words Data Structure](problems/0211_design_add_and_search_words_data_structure/notes.md)
+  - 识别信号：查询中的 "." 能匹配任意一个字母 → 遇到它要在多个分支里尝试；单词逐字符匹配、大量共享前缀 → 字典树
+  - 关键一步：遇到 "." 时，对当前节点的每一个子节点递归匹配剩下的部分，任何一条分支成功就返回 True。
+- [212. Word Search II](problems/0212_word_search_ii/notes.md)
+  - 识别信号：和 79 题一样在网格上沿相邻格子拼单词、每格只能用一次 → 回溯；但要同时找很多个单词（最多 3·10^4 个），单词之间共享前缀 → 把单词表建成字典树，一次搜索同时匹配所有单词
+  - 关键一步：用字典树代替单词表：网格 DFS 每走一步，同时在字典树上走一步，走不下去就剪枝，一次搜索匹配所有单词。
+- [230. Kth Smallest Element in a BST](problems/0230_kth_smallest_element_in_a_bst/notes.md)
+  - 识别信号：树是二叉搜索树，问"第 k 小"的元素；BST 的中序遍历就是升序，第 k 小 = 中序遍历的第 k 个节点
+  - 关键一步：中序遍历按从小到大的顺序访问 BST 的节点，所以只要在中序遍历中数到第 k 个被访问的节点就可以停下，它就是答案。
+- [236. Lowest Common Ancestor of a Binary Tree](problems/0236_lowest_common_ancestor_of_a_binary_tree/notes.md)
+  - 识别信号：求两个节点的最低公共祖先（LCA，同时是两者祖先的节点里最深的那个），并且是普通二叉树，没有 BST 的大小关系可用；p、q 一定在树里且不相同，节点值唯一；一个节点可以是它自己的祖先
+  - 关键一步：后序递归时，如果左右子树都找到了目标，当前节点就是最低公共祖先；遇到 p 或 q 本身就直接返回，不用再往下找，因为另一个如果在它下面，答案就是它自己。
+- [399. Evaluate Division](problems/0399_evaluate_division/notes.md)
+  - 识别信号：已知若干 a / b = k，求 x / y；比值可以传递：a / c = (a / b) · (b / c)；把变量看成节点、每个等式看成带权的边，查询就变成找一条从 x 到 y 的路径
+  - 关键一步：x / y 等于从 x 到 y 路径上各条边比值的乘积：正向边乘 v，反向边乘 1 / v，所以建图时每个等式要同时加上正反两条边。
+- [530. Minimum Absolute Difference in BST](problems/0530_minimum_absolute_difference_in_bst/notes.md)
+  - 识别信号：树是二叉搜索树（BST），而问题是"任意两个节点值之差的最小值"；BST 的中序遍历是升序序列，最小差只可能出现在升序序列的相邻两个数之间
+  - 关键一步：中序遍历时维护"上一个访问的节点值" prev，每访问一个节点就用 当前值 − prev 更新答案；因为中序是升序，这个差一定是非负的相邻差。
+
+## 双指针（16）
 
 - [5. Longest Palindromic Substring](problems/0005_longest_palindromic_substring/notes.md)
   - 识别信号：求最长的回文连续子串：回文关于中心对称，从中心向两边扩展就能枚举出所有回文；len(s) ≤ 1000，O(n²) 可以接受
@@ -28,6 +268,9 @@
 - [80. Remove Duplicates from Sorted Array II](problems/0080_remove_duplicates_from_sorted_array_ii/notes.md)
   - 识别信号：有序数组、原地删除、只允许 O(1) 额外空间，返回保留的个数 k；每个值最多保留两个，是否保留只和"已保留部分"的末尾有关
   - 关键一步：数组有序，只要 nums[i] 不等于已保留部分的倒数第二个元素，保留它就不会出现三个相同的数。
+- [86. Partition List](problems/0086_partition_list/notes.md)
+  - 识别信号：按和 x 的大小关系把链表分成前后两段，并且每段内部要保持原来的相对顺序（稳定划分）；操作对象是链表节点，可以直接摘下节点重新连接
+  - 关键一步：用两个哑节点分别串起小于 x 和不小于 x 的节点，每个节点都只追加到各自链表的尾部，原有相对顺序自然保留，最后把两条链表首尾相接。
 - [88. Merge Sorted Array](problems/0088_merge_sorted_array/notes.md)
   - 识别信号：两个有序数组合并，结果要原地写进 nums1；nums1 尾部预留了 n 个空位
   - 关键一步：从后往前填：nums1 尾部的空位足够放下所有较大的元素，写指针永远不会越过 nums1 的读指针，不会覆盖未读元素。
@@ -50,53 +293,101 @@
   - 识别信号：判断 s 是否是 t 的子序列：字符相对顺序要保持，但不要求连续；两个序列各自单向前进、互相匹配，适合两个指针同步扫描
   - 关键一步：贪心匹配：s 的每个字符都和 t 中能匹配的最早位置配对，配上就移动 s 的指针。
 
-## 哈希表（15）
+## BFS（15）
 
-- [1. Two Sum](problems/0001_two_sum/notes.md)
-  - 识别信号：在数组里找"两个数之和等于 target"，并且要返回下标（排序会打乱原位置）；换个说法：对每个数，查"target − 它"有没有出现过
-  - 关键一步：遍历到 nums[i] 时，先查 target − nums[i] 是否已在哈希表里；查不到再把 nums[i] 存进去。
-- [3. Longest Substring Without Repeating Characters](problems/0003_longest_substring_without_repeating_characters/notes.md)
-  - 识别信号：求满足条件（无重复字符）的"最长连续子串"；右端加入一个字符时，只需看这个字符是否已经在窗口里，可以 O(1) 判断
-  - 关键一步：哈希表记录每个字符最后出现的下标；遇到重复字符时，只有它上次出现的位置还在窗口内（≥ l）才把左端移到该位置 + 1，左端只往右走。
-- [13. Roman to Integer](problems/0013_roman_to_integer/notes.md)
-  - 识别信号：按固定的符号表把字符串翻译成数值；"小数在大数左边表示相减"只有 6 种组合：IV、IX、XL、XC、CD、CM
-  - 关键一步：先看当前位置和下一个位置组成的两个字符是否在表里（减法组合），在就整体加上并跳两格，不在就只加当前字符。
-- [36. Valid Sudoku](problems/0036_valid_sudoku/notes.md)
-  - 识别信号：只判断已填数字在每行、每列、每个 3×3 宫内不重复，不要求数独能解；判重 → 哈希表 / 集合；棋盘固定 9×9
-  - 关键一步：用宫号公式 (i // 3)·3 + j // 3 把格子归到所在的 3×3 宫，这样行、列、宫的判重可以在同一遍扫描里完成。
-- [49. Group Anagrams](problems/0049_group_anagrams/notes.md)
-  - 识别信号：把"字母相同、顺序不同"的字符串分到同一组；分组 → 给每组找一个相同的、可哈希的"签名"做字典键
-  - 关键一步：把"互为异位词"转成"签名相同"：签名必须可哈希，排序后的字符串或计数元组都可以，dict 不行。
-- [73. Set Matrix Zeroes](problems/0073_set_matrix_zeroes/notes.md)
-  - 识别信号：原地修改矩阵，某个格子是 0 会影响它所在的整行和整列；边扫边改会让新写入的 0 继续"传染"，必须先记录、后修改
-  - 关键一步：分两遍：先标记含 0 的行和列，再清零；O(1) 空间版本把这些标记存在第一行和第一列里。
-- [128. Longest Consecutive Sequence](problems/0128_longest_consecutive_sequence/notes.md)
-  - 识别信号：数组未排序，求值连续的最长序列长度（不要求在原数组中相邻）；题目要求 O(n) 时间，排除了排序，提示用哈希集合 O(1) 查"x+1 在不在"
-  - 关键一步：只从 x − 1 不在集合中的 x 开始向上延伸，这样每个连续段只被完整扫描一次。
+- [45. Jump Game II](problems/0045_jump_game_ii/notes.md)
+  - 识别信号：nums[i] 是从 i 最多能跳的距离，求到达最后一个位置的最少跳跃次数；保证能到达终点；求"最少步数" → 按步数分层（BFS），而每一层都是一段连续区间
+  - 关键一步：第 s 步能到达的位置是连续的一段，扫到这一段的右边界 end 时必须再跳一次，新的右边界就是这一段里能跳到的最远位置 max_len。
+- [101. Symmetric Tree](problems/0101_symmetric_tree/notes.md)
+  - 识别信号：判断树是否是自身的镜像，也就是左子树和右子树互为镜像；进阶要求递归和迭代两种写法
+  - 关键一步：比较的是成对的节点：左边的左孩子对右边的右孩子，左边的右孩子对右边的左孩子。
+- [102. Binary Tree Level Order Traversal](problems/0102_binary_tree_level_order_traversal/notes.md)
+  - 识别信号：输出是"按层分组"的二维列表，每层内从左到右；层序遍历的模板题，后续很多按层处理的题都基于它
+  - 关键一步：用"处理这一层之前的队列长度"作为层的边界：这一轮只出队这么多个节点，它们就是同一层，期间新入队的孩子留给下一轮。
+- [103. Binary Tree Zigzag Level Order Traversal](problems/0103_binary_tree_zigzag_level_order_traversal/notes.md)
+  - 识别信号：按层输出，但相邻两层方向交替（左到右、右到左）；本质是层序遍历，只是写入每层结果时方向不同
+  - 关键一步：节点的遍历顺序永远和普通层序遍历一样，"之字形"只体现在把值写进本层列表的方向上：根据层号奇偶选择从尾部追加还是从头部插入。
+- [117. Populating Next Right Pointers in Each Node II](problems/0117_populating_next_right_pointers_in_each_node_ii/notes.md)
+  - 识别信号：要把同一层的节点从左到右串起来，是按层处理；不是完美二叉树，有的节点缺孩子，下一层相邻的两个节点可能来自不相邻的父节点；进阶要求只用常数额外空间（递归栈不算）
+  - 关键一步：第 i 层连好之后就是一条链表，沿着它走就能按从左到右的顺序拿到第 i + 1 层的全部孩子，用哑节点把这些孩子串起来，就连好了第 i + 1 层。
+- [127. Word Ladder](problems/0127_word_ladder/notes.md)
+  - 识别信号：每次只能改一个字母，中间词必须在 wordList 里 → 隐式图，边是"只差一个字母"；求最短转换序列的长度 → 无权图上的最短路；wordList 可达 5000，两两比较建图会超时，需要更快地找邻居
+  - 关键一步：不预先建图：BFS 中对当前词逐位替换 26 个字母来生成邻居并查集合，访问过的词立刻从集合里删掉；层数就是序列长度。
+- [130. Surrounded Regions](problems/0130_surrounded_regions/notes.md)
+  - 识别信号：要把"被 'X' 完全包围"的 'O' 区域翻成 'X'；区域是上下左右连通的 'O'；一个区域没被包围 ⇔ 它和边界上的某个 'O' 连通——判断"能否到达边界"比判断"是否被包围"容易
+  - 关键一步：不去找"被包围的"区域，而是从边界上的 'O' 出发找出所有"逃得出去的" 'O' 并做标记；没被标记到的 'O' 一定被包围，全部翻转。
+- [133. Clone Graph](problems/0133_clone_graph/notes.md)
+  - 识别信号：深拷贝一个可能带环的结构（无向图），节点之间互相引用；同一个节点会从多条边被走到，需要"原节点 → 克隆节点"的对应关系来避免重复复制和死循环
+  - 关键一步：新建克隆节点后要先把它放进哈希表，再去处理邻居：这样沿着环绕回来时能直接拿到这个克隆，而不会再复制一次或陷入死循环。
+- [199. Binary Tree Right Side View](problems/0199_binary_tree_right_side_view/notes.md)
+  - 识别信号：从右边看，每一层只能看到最右边的一个节点，答案就是"每层的最后一个节点"；输出按从上到下的层排列，层数就是答案长度
+  - 关键一步：每一层只要"最右边那一个"：BFS 时用处理前的队列长度划出一层，这层最后出队的节点就是答案；DFS 先走右子树，当 depth == len(ans) 时说明这一层还没记录，当前节点就是该层最右。
+- [200. Number of Islands](problems/0200_number_of_islands/notes.md)
+  - 识别信号：二维网格，上下左右相邻的 '1' 连成一块，求块（连通分量）的个数；典型的网格连通分量计数
+  - 关键一步：扫描到一个还没访问过的 '1' 时答案加 1，并立刻把它所在的整座岛"淹掉"（全部标记为已访问），这样同一座岛的其他格子之后都会被跳过，每座岛只被数一次。
+- [433. Minimum Genetic Mutation](problems/0433_minimum_genetic_mutation/notes.md)
+  - 识别信号：每次只能改一个字符，而且中间结果必须在 bank 里 → 状态图，边是"只差一个字符"；求最少突变次数 → 无权图上的最短路
+  - 关键一步：把"一次突变"看成图上的一条边：候选邻居由逐位替换成 A、C、G、T 直接生成，再查 bank 集合判断是否合法；BFS 的层数就是最少突变次数。
+- [637. Average of Levels in Binary Tree](problems/0637_average_of_levels_in_binary_tree/notes.md)
+  - 识别信号：要求"每一层"的统计量（平均值），需要按层把节点分组；输出长度等于树的层数
+  - 关键一步：BFS 处理一层之前先记下 len(queue)，这一批出队的节点正好是这一层的全部节点，把它们的值加起来再除以这个个数。
+- [733. Flood Fill](problems/0733_flood_fill/notes.md)
+  - 识别信号：从一个格子出发，把上下左右连通、颜色相同的区域全部改色；"连通区域"在网格里就是 BFS / DFS 遍历
+  - 关键一步：入队时立即改成新颜色，用"颜色是否还是原色"代替 visited 判断；新旧颜色相同时提前返回。
+- [909. Snakes and Ladders](problems/0909_snakes_and_ladders/notes.md)
+  - 识别信号：求从格子 1 到 n² 的"最少掷骰次数"，每次掷骰代价都是 1 → 无权图上的最短路；每个格子最多 6 个后继，蛇和梯子只是把落点改到别处，状态总数只有 n² 个
+  - 关键一步：把棋盘拉平成编号 1..n² 的图：掷一次骰子是一条权重为 1 的边，蛇和梯子只是改写这条边的终点，"最少掷骰次数"就是从 1 到 n² 的 BFS 最短路。
+- [2146. K Highest Ranked Items Within a Price Range](problems/2146_k_highest_ranked_items_within_a_price_range/notes.md)
+  - 识别信号：网格里有墙（0）、空地（1）、商品（价格），每步上下左右走一格，排名第一关键字是"从起点出发的最短步数"；每步代价都是 1 的最短路，就是从起点做 BFS；排名规则是多关键字（距离、价格、行、列），收集后按元组排序
+  - 关键一步：BFS 按层扩展天然按距离从小到大收集商品；某一层处理完时已收集够 k 个，就不必再往外走，剩下只需按 (距离, 价格, 行, 列) 排序。
+
+## 链表（15）
+
+- [2. Add Two Numbers](problems/0002_add_two_numbers/notes.md)
+  - 识别信号：两个非负整数按"逆序"存在链表里，个位在表头，正好可以从头开始逐位相加；返回同样格式的链表，结果最多比较长的链表多 1 位（最高位进位）
+  - 关键一步：每一位的结果是 (a + b + 进位) 的个位，新进位是它整除 10；两条链表都走完后进位不为 0 还要补一个节点。
+- [19. Remove Nth Node From End of List](problems/0019_remove_nth_node_from_end_of_list/notes.md)
+  - 识别信号：要删"倒数第 n 个"节点，而单链表只能从头往后走；进阶要求只遍历一次：让一个指针比另一个固定落后 n 步
+  - 关键一步：后面的指针始终比前面的指针落后 n 步，停在待删节点的前驱；前面的指针走完时执行 前驱.next = 前驱.next.next。
+- [21. Merge Two Sorted Lists](problems/0021_merge_two_sorted_lists/notes.md)
+  - 识别信号：把两个已经升序的链表合成一个升序链表，就是归并排序里的合并步骤；要求拼接原有节点，不需要新建节点
+  - 关键一步：每次比较两条链表的当前节点，把较小的接到结果尾部；一条链表走完后，另一条的剩余部分直接整段接上。
+- [23. Merge k Sorted Lists](problems/0023_merge_k_sorted_lists/notes.md)
+  - 识别信号：合并 k 个已排序的序列，每一步要从 k 个当前最小值里挑出最小的那个；k 可达 10^4，逐条合并会让前面的节点被反复扫描
+  - 关键一步：下一个要接上的节点只可能是 k 条链表当前头节点中最小的那个；用大小为 k 的小顶堆维护这些头节点，每次取最小只要 O(log k)。
+- [25. Reverse Nodes in k-Group](problems/0025_reverse_nodes_in_k_group/notes.md)
+  - 识别信号：链表"每 k 个节点一组翻转"，最后不足 k 个的保持原顺序；要求交换节点本身而不是改节点的值；进阶要求 O(1) 额外空间
+  - 关键一步：每组先确认够 k 个再反转；反转后把上一组的尾巴接到本组的新头，本组的新尾巴（原来的组头）接到下一组的开头。
+- [61. Rotate List](problems/0061_rotate_list/notes.md)
+  - 识别信号：链表整体向右旋转 k 位，等价于把末尾 k 个节点整体搬到头部；k 可能远大于链表长度（k ≤ 2·10^9）
+  - 关键一步：先 k %= n，新头是第 n − k 个节点的下一个节点：首尾相连成环后，在第 n − k 个节点处断开。
+- [82. Remove Duplicates from Sorted List II](problems/0082_remove_duplicates_from_sorted_list_ii/notes.md)
+  - 识别信号：有序链表，出现重复的数字要一个不留地全部删除；头节点本身也可能被删，"新头"在扫描前不确定
+  - 关键一步：有序意味着重复值相邻：发现 head.val == head.next.val 就把这一整段跳过，只有和后一个不同的节点才接到结果尾部。
+- [83. Remove Duplicates from Sorted List](problems/0083_remove_duplicates_from_sorted_list/notes.md)
+  - 识别信号：有序链表，重复值一定相邻；每个值保留一个，所以头节点永远不会被删
+  - 关键一步：删掉下一个节点后先不前进，继续和新的下一个节点比较，这样连续多个重复都能删掉。
+- [86. Partition List](problems/0086_partition_list/notes.md)
+  - 识别信号：按和 x 的大小关系把链表分成前后两段，并且每段内部要保持原来的相对顺序（稳定划分）；操作对象是链表节点，可以直接摘下节点重新连接
+  - 关键一步：用两个哑节点分别串起小于 x 和不小于 x 的节点，每个节点都只追加到各自链表的尾部，原有相对顺序自然保留，最后把两条链表首尾相接。
+- [92. Reverse Linked List II](problems/0092_reverse_linked_list_ii/notes.md)
+  - 识别信号：只反转链表中位置 left 到 right 的一段，其余部分保持原样；进阶要求一趟扫描完成
+  - 关键一步：头插法：pre 和 cur 固定不动，每次把 cur 后面的节点移到 pre 后面，right − left 次之后这一段就反转了。
+- [117. Populating Next Right Pointers in Each Node II](problems/0117_populating_next_right_pointers_in_each_node_ii/notes.md)
+  - 识别信号：要把同一层的节点从左到右串起来，是按层处理；不是完美二叉树，有的节点缺孩子，下一层相邻的两个节点可能来自不相邻的父节点；进阶要求只用常数额外空间（递归栈不算）
+  - 关键一步：第 i 层连好之后就是一条链表，沿着它走就能按从左到右的顺序拿到第 i + 1 层的全部孩子，用哑节点把这些孩子串起来，就连好了第 i + 1 层。
 - [138. Copy List with Random Pointer](problems/0138_copy_list_with_random_pointer/notes.md)
   - 识别信号：深拷贝一个带 random 指针的链表，新链表不能指向原链表的任何节点；random 可能指向后面还没复制的节点，需要"原节点 → 新节点"的对应关系
   - 关键一步：先建立"原节点 → 新节点"的映射，再统一连 random，这样 random 指向的节点一定已经存在。
 - [141. Linked List Cycle](problems/0141_linked_list_cycle/notes.md)
   - 识别信号：判断链表是否有环；进阶要求 O(1) 额外空间，提示快慢指针
   - 关键一步：快指针每步比慢指针多走 1 步，进环后两者距离每步缩小 1，一定会相遇。
-- [202. Happy Number](problems/0202_happy_number/notes.md)
-  - 识别信号：反复做同一个变换，结果要么到达 1，要么无限循环；判断"是否进入循环"：记录见过的值，或者用快慢指针判环
-  - 关键一步：平方和序列只能到 1 或进入循环，问题等价于判环：见过的数再次出现，就不是快乐数。
-- [205. Isomorphic Strings](problems/0205_isomorphic_strings/notes.md)
-  - 识别信号：两个字符串逐位置对应，判断能否在字符之间建立映射；"不同字符不能映射到同一个字符"，说明映射必须是一一对应
-  - 关键一步：只记 s → t 不够，还要记 t → s：s 里一个新字符想映射到的 t 字符如果已经被别的字符占用，就不同构（"badc" 和 "baba"）。
-- [219. Contains Duplicate II](problems/0219_contains_duplicate_ii/notes.md)
-  - 识别信号：判断是否存在两个相等的元素，且下标差 ≤ k；"距离不超过 k"：只关心每个值上一次出现的位置，或者维护长度为 k 的窗口
-  - 关键一步：对同一个值，最近一次出现离当前位置最近；它都超过 k，更早的只会更远。
-- [290. Word Pattern](problems/0290_word_pattern/notes.md)
-  - 识别信号：pattern 的字母和 s 的单词之间要"一一对应"（双射）：同一字母只能对应同一单词，不同字母不能对应同一单词；需要记录"已经见过的映射"，并能 O(1) 反查
-  - 关键一步：双射要两个方向都检查：新单词第一次出现时，它要对应的字母必须还没被别的单词占用。
-- [380. Insert Delete GetRandom O(1)](problems/0380_insert_delete_getrandom_o_1/notes.md)
-  - 识别信号：要求 insert、remove、getRandom 都是平均 O(1)；哈希表能 O(1) 增删查，但不能 O(1) 等概率随机取；数组能 O(1) 随机取，但不能 O(1) 删除中间元素，需要把两者结合
-  - 关键一步：删除中间元素时，用数组末尾元素覆盖被删位置、更新末尾元素在哈希表里的下标，再 pop 末尾，避免数组整体移位。
-- [Booking: Award Top K Hotels](problems/booking_award_topk_hotels/notes.md)
-  - 识别信号：题目（HackerRank，Booking 面试题）：给出正面关键词串 positiveKeywords、负面关键词串 negativeKeywords（空格分隔），以及等长的 hotelIds 和 reviews（第 i 条评论属于 hotelIds[i]）。评论中每出现一次正面词加 3 分、负面词减 1 分；匹配不区分大小写，单词按空白切分并去掉首尾的 . , ! ?。同一酒店的分数累加，返回得分最高的 k 个酒店 id，同分按 id 升序；不足 k 个就全部返回；"按某个 key 累加分数"用哈希表，"取前 k 名、多关键字排序"用排序（或大小为 k 的堆）
-  - 关键一步：排序键写成 (−分数, id)：分数降序、同分时 id 升序一次完成。
+- [146. LRU Cache](problems/0146_lru_cache/notes.md)
+  - 识别信号：get 和 put 都要求 O(1) 平均时间；容量满时要淘汰"最久未使用"的键，而每次 get 或 put 都会改变使用顺序
+  - 关键一步：哈希表直接定位到双向链表里的节点，双向链表让任意节点 O(1) 摘下并移到最新端，两者结合才能让 get 和 put 都是 O(1)。
+- [148. Sort List](problems/0148_sort_list/notes.md)
+  - 识别信号：对链表排序，进阶要求 O(n log n) 时间、O(1) 额外空间；链表不能按下标随机访问，快排找基准、堆排序都不顺手；而"合并两个有序链表"（21 题）只改指针、不用额外数组
+  - 关键一步：归并排序天然适合链表：合并两个有序链表只改 next 指针、不需要额外数组；自底向上按步长 1、2、4…… 切段两两合并，就连递归栈也省掉了。
 
 ## 字符串模拟（13）
 
@@ -140,7 +431,7 @@
   - 识别信号：题目（HackerRank，Booking 面试题）：一次左移把首字符移到末尾，一次右移把末字符移到开头。对字符串 s 先做 leftShifts 次左移、再做 rightShifts 次右移，返回结果；左移和右移互相抵消，移动 len(s) 次回到原样，用取模算净位移
   - 关键一步：把所有移位合成一次净左移 (leftShifts − rightShifts) mod n，再切片拼接。
 
-## 贪心（10）
+## 贪心（12）
 
 - [11. Container With Most Water](problems/0011_container_with_most_water/notes.md)
   - 识别信号：在数组里选两条线，面积 = min(两条线的高) × 下标距离，求最大值；从两端向中间收缩时宽度一定变小，只有更高的边才可能让面积变大
@@ -166,47 +457,53 @@
 - [135. Candy](problems/0135_candy/notes.md)
   - 识别信号：每人至少 1 颗，评分比相邻高的要比相邻的多，求最少总数；约束同时来自左邻居和右邻居，可以拆成"只看左边"和"只看右边"两个方向分别满足
   - 关键一步：左右各扫一遍：第二遍只在"评分高于右邻且糖果不多于右邻"时改成右邻 + 1，这等价于取两个方向要求的最大值。
+- [300. Longest Increasing Subsequence](problems/0300_longest_increasing_subsequence/notes.md)
+  - 识别信号：求"子序列"（可以不连续、保持原顺序）的最长长度，条件是严格递增；以某个元素结尾的最优结果，只依赖它前面比它小的元素的结果
+  - 关键一步：长度相同的递增子序列，结尾越小越容易被后面的数接上，所以每个长度只记最小的结尾；这个数组天然递增，新数字用二分找到它该替换的位置。
 - [452. Minimum Number of Arrows to Burst Balloons](problems/0452_minimum_number_of_arrows_to_burst_balloons/notes.md)
   - 识别信号：一组区间，用最少的"点"覆盖所有区间（一支箭就是一个 x 坐标）；端点相接也算重叠（x_start ≤ x ≤ x_end）
   - 关键一步：按起点排序后，当前组的交集右端是 min(各终点)；新气球起点 ≤ 这个右端就能共用一支箭，否则必须再射一支。
+- [502. IPO](problems/0502_ipo/notes.md)
+  - 识别信号：最多做 k 个项目，每个项目要求当前资本 ≥ capital[i]，做完资本增加 profits[i]（利润非负），求最终最大资本；每一轮都要在"当前能做的项目"里挑利润最大的，而能做的项目集合随资本增长只增不减
+  - 关键一步：资本只增不减，所以"能做的项目"只会越来越多：按所需资本排序后用指针一次性加入大顶堆，每轮取堆顶利润最大的那个。
 - [Booking: Minimum Sum](problems/booking_minimum_sum/notes.md)
   - 识别信号：题目（HackerRank，Booking 面试题）：给定整数数组 num 和整数 k，执行恰好 k 次操作，每次选一个元素 x 替换成 ceil(x / 2)，返回 k 次操作后数组之和的最小可能值；每次都要取"当前最大值"并把变小的值放回去，是典型的最大堆场景
   - 关键一步：每次操作都作用在当前最大值上，用最大堆维护"当前最大"。
 
-## 链表（10）
+## 二分查找（10）
 
-- [2. Add Two Numbers](problems/0002_add_two_numbers/notes.md)
-  - 识别信号：两个非负整数按"逆序"存在链表里，个位在表头，正好可以从头开始逐位相加；返回同样格式的链表，结果最多比较长的链表多 1 位（最高位进位）
-  - 关键一步：每一位的结果是 (a + b + 进位) 的个位，新进位是它整除 10；两条链表都走完后进位不为 0 还要补一个节点。
-- [19. Remove Nth Node From End of List](problems/0019_remove_nth_node_from_end_of_list/notes.md)
-  - 识别信号：要删"倒数第 n 个"节点，而单链表只能从头往后走；进阶要求只遍历一次：让一个指针比另一个固定落后 n 步
-  - 关键一步：后面的指针始终比前面的指针落后 n 步，停在待删节点的前驱；前面的指针走完时执行 前驱.next = 前驱.next.next。
-- [21. Merge Two Sorted Lists](problems/0021_merge_two_sorted_lists/notes.md)
-  - 识别信号：把两个已经升序的链表合成一个升序链表，就是归并排序里的合并步骤；要求拼接原有节点，不需要新建节点
-  - 关键一步：每次比较两条链表的当前节点，把较小的接到结果尾部；一条链表走完后，另一条的剩余部分直接整段接上。
-- [25. Reverse Nodes in k-Group](problems/0025_reverse_nodes_in_k_group/notes.md)
-  - 识别信号：链表"每 k 个节点一组翻转"，最后不足 k 个的保持原顺序；要求交换节点本身而不是改节点的值；进阶要求 O(1) 额外空间
-  - 关键一步：每组先确认够 k 个再反转；反转后把上一组的尾巴接到本组的新头，本组的新尾巴（原来的组头）接到下一组的开头。
-- [61. Rotate List](problems/0061_rotate_list/notes.md)
-  - 识别信号：链表整体向右旋转 k 位，等价于把末尾 k 个节点整体搬到头部；k 可能远大于链表长度（k ≤ 2·10^9）
-  - 关键一步：先 k %= n，新头是第 n − k 个节点的下一个节点：首尾相连成环后，在第 n − k 个节点处断开。
-- [82. Remove Duplicates from Sorted List II](problems/0082_remove_duplicates_from_sorted_list_ii/notes.md)
-  - 识别信号：有序链表，出现重复的数字要一个不留地全部删除；头节点本身也可能被删，"新头"在扫描前不确定
-  - 关键一步：有序意味着重复值相邻：发现 head.val == head.next.val 就把这一整段跳过，只有和后一个不同的节点才接到结果尾部。
-- [83. Remove Duplicates from Sorted List](problems/0083_remove_duplicates_from_sorted_list/notes.md)
-  - 识别信号：有序链表，重复值一定相邻；每个值保留一个，所以头节点永远不会被删
-  - 关键一步：删掉下一个节点后先不前进，继续和新的下一个节点比较，这样连续多个重复都能删掉。
-- [92. Reverse Linked List II](problems/0092_reverse_linked_list_ii/notes.md)
-  - 识别信号：只反转链表中位置 left 到 right 的一段，其余部分保持原样；进阶要求一趟扫描完成
-  - 关键一步：头插法：pre 和 cur 固定不动，每次把 cur 后面的节点移到 pre 后面，right − left 次之后这一段就反转了。
-- [138. Copy List with Random Pointer](problems/0138_copy_list_with_random_pointer/notes.md)
-  - 识别信号：深拷贝一个带 random 指针的链表，新链表不能指向原链表的任何节点；random 可能指向后面还没复制的节点，需要"原节点 → 新节点"的对应关系
-  - 关键一步：先建立"原节点 → 新节点"的映射，再统一连 random，这样 random 指向的节点一定已经存在。
-- [141. Linked List Cycle](problems/0141_linked_list_cycle/notes.md)
-  - 识别信号：判断链表是否有环；进阶要求 O(1) 额外空间，提示快慢指针
-  - 关键一步：快指针每步比慢指针多走 1 步，进环后两者距离每步缩小 1，一定会相遇。
+- [4. Median of Two Sorted Arrays](problems/0004_median_of_two_sorted_arrays/notes.md)
+  - 识别信号：两个有序数组求整体的中位数，要求 O(log(m + n))，不能真的合并；中位数 = 合并后第 k 小的元素（或中间两个的平均），而"第 k 小"可以每次排除一半候选
+  - 关键一步：中位数把合并后的数组切成个数相等的左右两半；在短数组上二分切点 i，长数组的切点 j 就由总长度定死，只需检查交叉的两对元素是否满足左半 ≤ 右半。
+- [33. Search in Rotated Sorted Array](problems/0033_search_in_rotated_sorted_array/notes.md)
+  - 识别信号：有序数组在某个位置被旋转过，元素互不相同，要求 O(log n)；从任意位置切开，左右两段至少有一段是有序的
+  - 关键一步：mid 把区间分成两半，其中一半一定有序；只在有序那一半里用两端的值判断 target 在不在，在就进去，不在就去另一半。
+- [34. Find First and Last Position of Element in Sorted Array](problems/0034_find_first_and_last_position_of_element_in_sorted_array/notes.md)
+  - 识别信号：非递减数组（有重复），找 target 的第一个和最后一个位置，要求 O(log n)；"第一个 ≥ x 的位置"（下界）一类的边界问题
+  - 关键一步：第一个位置 = 第一个 ≥ target 的下标，最后一个位置 = 第一个 ≥ target + 1 的下标 − 1，两个都用同一个下界二分。
+- [35. Search Insert Position](problems/0035_search_insert_position/notes.md)
+  - 识别信号：有序、无重复的数组，找 target 的下标或应插入的位置；题目明确要求 O(log n)
+  - 关键一步：插入位置就是"第一个 ≥ target 的下标"，二分到 left == right 时它就是答案。
+- [69. Sqrt(x)](problems/0069_sqrt_x/notes.md)
+  - 识别信号：求满足 k² ≤ x 的最大整数 k，而 k² 随 k 单调递增；不允许使用内置的开方或幂运算；x 最大到 2^31 − 1
+  - 关键一步：k² ≤ x 对 k 单调，二分找最后一个满足的 k；牛顿迭代则用切线逼近 √x，整数部分稳定后即为答案。
+- [74. Search a 2D Matrix](problems/0074_search_a_2d_matrix/notes.md)
+  - 识别信号：每行递增，并且每行第一个数大于上一行最后一个数——按行首尾相接就是一个整体有序的序列；要求 O(log(m · n))
+  - 关键一步：按行展开后整个矩阵是一个严格递增的一维数组，下标 i 映射到第 i // n 行、第 i % n 列，直接套普通二分。
+- [153. Find Minimum in Rotated Sorted Array](problems/0153_find_minimum_in_rotated_sorted_array/notes.md)
+  - 识别信号：升序且互不相同的数组被旋转过，求最小值，要求 O(log n)；最小值就是旋转点：它左边一段整体大于右边一段
+  - 关键一步：和区间右端点比较：nums[mid] > nums[hi] 说明旋转点在 (mid, hi] 里，否则 [mid, hi] 是有序的，最小值在 lo..mid 之间。
+- [162. Find Peak Element](problems/0162_find_peak_element/notes.md)
+  - 识别信号：要求 O(log n)，但数组整体无序；相邻元素一定不相等，且两端外侧视为 −∞：只看 nums[mid] 和 nums[mid + 1] 的大小就能断定哪一侧一定有峰
+  - 关键一步：沿上坡方向走一定能走到峰：nums[mid] < nums[mid + 1] 时一直向右，要么中途开始下降（那里就是峰），要么升到最右端（右侧是 −∞，也是峰）。
+- [222. Count Complete Tree Nodes](problems/0222_count_complete_tree_nodes/notes.md)
+  - 识别信号：树是完全二叉树：除最后一层外都是满的，最后一层的节点都靠左；题目要求设计低于 O(n) 的算法，不能把节点逐个数一遍
+  - 关键一步：完全二叉树的左右子树中至少有一棵是满二叉树，满二叉树的节点数由高度直接算出，所以每一层只需要递归另一棵子树。
+- [300. Longest Increasing Subsequence](problems/0300_longest_increasing_subsequence/notes.md)
+  - 识别信号：求"子序列"（可以不连续、保持原顺序）的最长长度，条件是严格递增；以某个元素结尾的最优结果，只依赖它前面比它小的元素的结果
+  - 关键一步：长度相同的递增子序列，结尾越小越容易被后面的数接上，所以每个长度只记最小的结尾；这个数组天然递增，新数字用二分找到它该替换的位置。
 
-## 排序（9）
+## 排序（10）
 
 - [15. 3Sum](problems/0015_3sum/notes.md)
   - 识别信号：找出所有和为 0 的三元组，且结果不能有重复的三元组：排序后相同的数挨在一起，方便去重；固定一个数后，剩下的就是"在有序数组里找两数之和等于目标值"，可以用左右双指针
@@ -229,6 +526,9 @@
 - [452. Minimum Number of Arrows to Burst Balloons](problems/0452_minimum_number_of_arrows_to_burst_balloons/notes.md)
   - 识别信号：一组区间，用最少的"点"覆盖所有区间（一支箭就是一个 x 坐标）；端点相接也算重叠（x_start ≤ x ≤ x_end）
   - 关键一步：按起点排序后，当前组的交集右端是 min(各终点)；新气球起点 ≤ 这个右端就能共用一支箭，否则必须再射一支。
+- [502. IPO](problems/0502_ipo/notes.md)
+  - 识别信号：最多做 k 个项目，每个项目要求当前资本 ≥ capital[i]，做完资本增加 profits[i]（利润非负），求最终最大资本；每一轮都要在"当前能做的项目"里挑利润最大的，而能做的项目集合随资本增长只增不减
+  - 关键一步：资本只增不减，所以"能做的项目"只会越来越多：按所需资本排序后用指针一次性加入大顶堆，每轮取堆顶利润最大的那个。
 - [2146. K Highest Ranked Items Within a Price Range](problems/2146_k_highest_ranked_items_within_a_price_range/notes.md)
   - 识别信号：网格里有墙（0）、空地（1）、商品（价格），每步上下左右走一格，排名第一关键字是"从起点出发的最短步数"；每步代价都是 1 的最短路，就是从起点做 BFS；排名规则是多关键字（距离、价格、行、列），收集后按元组排序
   - 关键一步：BFS 按层扩展天然按距离从小到大收集商品；某一层处理完时已收集够 k 个，就不必再往外走，剩下只需按 (距离, 价格, 行, 列) 排序。
@@ -236,7 +536,7 @@
   - 识别信号：题目（HackerRank，Booking 面试题）：给出正面关键词串 positiveKeywords、负面关键词串 negativeKeywords（空格分隔），以及等长的 hotelIds 和 reviews（第 i 条评论属于 hotelIds[i]）。评论中每出现一次正面词加 3 分、负面词减 1 分；匹配不区分大小写，单词按空白切分并去掉首尾的 . , ! ?。同一酒店的分数累加，返回得分最高的 k 个酒店 id，同分按 id 升序；不足 k 个就全部返回；"按某个 key 累加分数"用哈希表，"取前 k 名、多关键字排序"用排序（或大小为 k 的堆）
   - 关键一步：排序键写成 (−分数, id)：分数降序、同分时 id 升序一次完成。
 
-## 数学（7）
+## 数学（10）
 
 - [2. Add Two Numbers](problems/0002_add_two_numbers/notes.md)
   - 识别信号：两个非负整数按"逆序"存在链表里，个位在表头，正好可以从头开始逐位相加；返回同样格式的链表，结果最多比较长的链表多 1 位（最高位进位）
@@ -250,17 +550,59 @@
 - [9. Palindrome Number](problems/0009_palindrome_number/notes.md)
   - 识别信号：判断一个整数正读和反读是否相同；进阶要求"不转成字符串"，就只能用 % 10 和 // 10 逐位处理
   - 关键一步：负数直接返回 False；非负数用 % 10 逐位取末位拼出反转数，最后和原数比较。
+- [50. Pow(x, n)](problems/0050_pow_x_n/notes.md)
+  - 识别信号：指数 n 可达 ±2^31，逐次相乘 O(n) 会超时；x^n = (x^(n / 2))^2，问题规模可以每次减半
+  - 关键一步：把 n 写成二进制：x^n 等于 n 中为 1 的那些位对应的 x^(2^i) 的乘积，而 x^(2^i) 由上一项平方得到，只需 O(log n) 次乘法。
 - [66. Plus One](problems/0066_plus_one/notes.md)
   - 识别信号：用数组逐位存一个大整数，对它做加法，需要处理进位；最高位进位时数组长度会加 1
   - 关键一步：从末位往前，遇到不是 9 的位加 1 后立即返回；只有全部为 9 时才需要在开头补 1。
 - [69. Sqrt(x)](problems/0069_sqrt_x/notes.md)
   - 识别信号：求满足 k² ≤ x 的最大整数 k，而 k² 随 k 单调递增；不允许使用内置的开方或幂运算；x 最大到 2^31 − 1
   - 关键一步：k² ≤ x 对 k 单调，二分找最后一个满足的 k；牛顿迭代则用切线逼近 √x，整数部分稳定后即为答案。
+- [149. Max Points on a Line](problems/0149_max_points_on_a_line/notes.md)
+  - 识别信号：求最多有多少个点在同一条直线上，n ≤ 300，O(n²) 可行、O(n³) 偏慢；经过一个固定点的直线由斜率唯一确定，可以按斜率分组计数
+  - 关键一步：固定一个点之后，"和它共线"等价于"相对它的斜率相同"，问题就变成用哈希表找出现次数最多的斜率。
+- [172. Factorial Trailing Zeroes](problems/0172_factorial_trailing_zeroes/notes.md)
+  - 识别信号：末尾 0 的个数 = 因子 10 的个数 = min(因子 2 的个数, 因子 5 的个数)；n! 非常大（n = 10^4 时有 3.5 万多位），不应真的算出来
+  - 关键一步：答案 = n // 5 + n // 25 + n // 125 + …：反复执行 n //= 5 并把结果累加，直到 n 为 0。
 - [Booking: Shift Strings](problems/booking_shift_strings/notes.md)
   - 识别信号：题目（HackerRank，Booking 面试题）：一次左移把首字符移到末尾，一次右移把末字符移到开头。对字符串 s 先做 leftShifts 次左移、再做 rightShifts 次右移，返回结果；左移和右移互相抵消，移动 len(s) 次回到原样，用取模算净位移
   - 关键一步：把所有移位合成一次净左移 (leftShifts − rightShifts) mod n，再切片拼接。
 
-## 栈（7）
+## 递归（10）
+
+- [94. Binary Tree Inorder Traversal](problems/0094_binary_tree_inorder_traversal/notes.md)
+  - 识别信号：要求按"左子树 → 根 → 右子树"的顺序输出节点值；进阶要求不用递归，提示要用显式栈模拟递归
+  - 关键一步：中序就是"一路向左走到底，回来时记录当前节点，再去右子树"；递归和栈写法都只是在实现这个顺序。
+- [98. Validate Binary Search Tree](problems/0098_validate_binary_search_tree/notes.md)
+  - 识别信号：判断一棵树是否满足 BST 定义：左子树所有节点都小于根、右子树所有节点都大于根，且左右子树也都是 BST；关键是"整棵子树"，不只是直接孩子
+  - 关键一步：每个节点的合法取值是一个开区间 (low, high)，它由路径上所有祖先共同决定：往左走把 high 改成当前节点值，往右走把 low 改成当前节点值，节点值不在区间内就不是 BST。
+- [100. Same Tree](problems/0100_same_tree/notes.md)
+  - 识别信号：判断两棵树结构和节点值是否完全相同；结论可以拆成"根相同 且 左子树相同 且 右子树相同"
+  - 关键一步：先处理"两个都空"和"只有一个空"这两种情况，剩下的就是值比较加左右递归。
+- [101. Symmetric Tree](problems/0101_symmetric_tree/notes.md)
+  - 识别信号：判断树是否是自身的镜像，也就是左子树和右子树互为镜像；进阶要求递归和迭代两种写法
+  - 关键一步：比较的是成对的节点：左边的左孩子对右边的右孩子，左边的右孩子对右边的左孩子。
+- [104. Maximum Depth of Binary Tree](problems/0104_maximum_depth_of_binary_tree/notes.md)
+  - 识别信号：求根到最远叶子的节点数；整棵树的答案可以由左右子树的答案合成：max(左深度, 右深度) + 1
+  - 关键一步：深度 = max(左子树深度, 右子树深度) + 1，空节点深度为 0。
+- [108. Convert Sorted Array to Binary Search Tree](problems/0108_convert_sorted_array_to_binary_search_tree/notes.md)
+  - 识别信号：输入是升序数组，要构造高度平衡的二叉搜索树；升序数组就是 BST 的中序遍历；"平衡"提示每次取中间元素当根
+  - 关键一步：取区间中点作为根：左右两段大小最多差 1，整棵树自然高度平衡，且中序仍是原数组。
+- [110. Balanced Binary Tree](problems/0110_balanced_binary_tree/notes.md)
+  - 识别信号：判断每个节点左右子树高度差是否都不超过 1；既要子树的"是否平衡"，又要子树的"高度"，适合后序遍历一次返回两样信息
+  - 关键一步：用 -1 表示"已不平衡"，非负数表示高度，一个返回值同时带回两种信息，每个节点只算一次。
+- [222. Count Complete Tree Nodes](problems/0222_count_complete_tree_nodes/notes.md)
+  - 识别信号：树是完全二叉树：除最后一层外都是满的，最后一层的节点都靠左；题目要求设计低于 O(n) 的算法，不能把节点逐个数一遍
+  - 关键一步：完全二叉树的左右子树中至少有一棵是满二叉树，满二叉树的节点数由高度直接算出，所以每一层只需要递归另一棵子树。
+- [226. Invert Binary Tree](problems/0226_invert_binary_tree/notes.md)
+  - 识别信号：每个节点做同一件事（交换左右孩子），整棵树的结果由左右子树各自的结果拼成
+  - 关键一步：对每个节点交换它的左右孩子，左右子树再各自做同样的事；先交换还是先递归都可以，不影响结果。
+- [427. Construct Quad Tree](problems/0427_construct_quad_tree/notes.md)
+  - 识别信号：网格边长 n 是 2 的幂，规则是"整块值相同就是叶子，否则四等分继续"——递归分治的结构直接写在题面里；节点有四个孩子，分别对应左上、右上、左下、右下四个象限
+  - 关键一步：自底向上合并：先建四个孩子，若四个都是叶子且值相同，当前块就是一个叶子；这样判断"整块相同"不需要再扫描格子。
+
+## 栈（9）
 
 - [20. Valid Parentheses](problems/0020_valid_parentheses/notes.md)
   - 识别信号：括号必须按正确顺序闭合：最后打开的必须最先关闭，正是后进先出；字符只有三种括号的左、右两种形式
@@ -280,30 +622,168 @@
 - [155. Min Stack](problems/0155_min_stack/notes.md)
   - 识别信号：设计一个栈，push、pop、top、getMin 都要 O(1)；pop 之后最小值要"回退"到之前的状态，所以每个栈状态都要记住当时的最小值
   - 关键一步：push 时往 min_stack 压入 min(val, 当前最小值)，pop 时两个栈一起弹出，弹出后 min_stack 栈顶自动回到上一个状态的最小值。
+- [173. Binary Search Tree Iterator](problems/0173_binary_search_tree_iterator/notes.md)
+  - 识别信号：按从小到大的顺序逐个返回 BST 的元素，就是中序遍历；进阶要求 next 和 hasNext 均摊 O(1)，并且只用 O(h) 内存
+  - 关键一步：栈里保存的是还没访问的左链，栈顶就是下一个最小值；弹出一个节点后，只需把它右子树的整条左链压入栈。
 - [224. Basic Calculator](problems/0224_basic_calculator/notes.md)
   - 识别信号：只含 +、−、括号、空格和非负整数的表达式求值，不能用 eval；括号可以嵌套，要用栈保存进入括号前的状态
   - 关键一步：每个数最终的正负号 = 它前面运算符的符号 × 外层所有括号的整体符号，栈顶 sign_stack[-1] 就是外层括号的累计符号。
+- [230. Kth Smallest Element in a BST](problems/0230_kth_smallest_element_in_a_bst/notes.md)
+  - 识别信号：树是二叉搜索树，问"第 k 小"的元素；BST 的中序遍历就是升序，第 k 小 = 中序遍历的第 k 个节点
+  - 关键一步：中序遍历按从小到大的顺序访问 BST 的节点，所以只要在中序遍历中数到第 k 个被访问的节点就可以停下，它就是答案。
 
-## 二叉树（6）
+## 分治（8）
 
-- [94. Binary Tree Inorder Traversal](problems/0094_binary_tree_inorder_traversal/notes.md)
-  - 识别信号：要求按"左子树 → 根 → 右子树"的顺序输出节点值；进阶要求不用递归，提示要用显式栈模拟递归
-  - 关键一步：中序就是"一路向左走到底，回来时记录当前节点，再去右子树"；递归和栈写法都只是在实现这个顺序。
-- [100. Same Tree](problems/0100_same_tree/notes.md)
-  - 识别信号：判断两棵树结构和节点值是否完全相同；结论可以拆成"根相同 且 左子树相同 且 右子树相同"
-  - 关键一步：先处理"两个都空"和"只有一个空"这两种情况，剩下的就是值比较加左右递归。
-- [101. Symmetric Tree](problems/0101_symmetric_tree/notes.md)
-  - 识别信号：判断树是否是自身的镜像，也就是左子树和右子树互为镜像；进阶要求递归和迭代两种写法
-  - 关键一步：比较的是成对的节点：左边的左孩子对右边的右孩子，左边的右孩子对右边的左孩子。
-- [104. Maximum Depth of Binary Tree](problems/0104_maximum_depth_of_binary_tree/notes.md)
-  - 识别信号：求根到最远叶子的节点数；整棵树的答案可以由左右子树的答案合成：max(左深度, 右深度) + 1
-  - 关键一步：深度 = max(左子树深度, 右子树深度) + 1，空节点深度为 0。
-- [108. Convert Sorted Array to Binary Search Tree](problems/0108_convert_sorted_array_to_binary_search_tree/notes.md)
-  - 识别信号：输入是升序数组，要构造高度平衡的二叉搜索树；升序数组就是 BST 的中序遍历；"平衡"提示每次取中间元素当根
-  - 关键一步：取区间中点作为根：左右两段大小最多差 1，整棵树自然高度平衡，且中序仍是原数组。
-- [110. Balanced Binary Tree](problems/0110_balanced_binary_tree/notes.md)
-  - 识别信号：判断每个节点左右子树高度差是否都不超过 1；既要子树的"是否平衡"，又要子树的"高度"，适合后序遍历一次返回两样信息
-  - 关键一步：用 -1 表示"已不平衡"，非负数表示高度，一个返回值同时带回两种信息，每个节点只算一次。
+- [4. Median of Two Sorted Arrays](problems/0004_median_of_two_sorted_arrays/notes.md)
+  - 识别信号：两个有序数组求整体的中位数，要求 O(log(m + n))，不能真的合并；中位数 = 合并后第 k 小的元素（或中间两个的平均），而"第 k 小"可以每次排除一半候选
+  - 关键一步：中位数把合并后的数组切成个数相等的左右两半；在短数组上二分切点 i，长数组的切点 j 就由总长度定死，只需检查交叉的两对元素是否满足左半 ≤ 右半。
+- [23. Merge k Sorted Lists](problems/0023_merge_k_sorted_lists/notes.md)
+  - 识别信号：合并 k 个已排序的序列，每一步要从 k 个当前最小值里挑出最小的那个；k 可达 10^4，逐条合并会让前面的节点被反复扫描
+  - 关键一步：下一个要接上的节点只可能是 k 条链表当前头节点中最小的那个；用大小为 k 的小顶堆维护这些头节点，每次取最小只要 O(log k)。
+- [50. Pow(x, n)](problems/0050_pow_x_n/notes.md)
+  - 识别信号：指数 n 可达 ±2^31，逐次相乘 O(n) 会超时；x^n = (x^(n / 2))^2，问题规模可以每次减半
+  - 关键一步：把 n 写成二进制：x^n 等于 n 中为 1 的那些位对应的 x^(2^i) 的乘积，而 x^(2^i) 由上一项平方得到，只需 O(log n) 次乘法。
+- [105. Construct Binary Tree from Preorder and Inorder Traversal](problems/0105_construct_binary_tree_from_preorder_and_inorder_traversal/notes.md)
+  - 识别信号：用两种遍历序列还原树：前序的第一个元素是根，中序里根左边是左子树、右边是右子树；节点值互不相同，可以用值在中序里唯一定位根
+  - 关键一步：前序的第一个元素是根，它在中序中的位置把中序分成左右两棵子树，左子树的节点个数决定了前序里左右子树的分界。
+- [106. Construct Binary Tree from Inorder and Postorder Traversal](problems/0106_construct_binary_tree_from_inorder_and_postorder_traversal/notes.md)
+  - 识别信号：用两种遍历序列还原树：后序的最后一个元素是根，中序里根左边是左子树、右边是右子树；节点值互不相同，可以用值在中序里唯一定位根
+  - 关键一步：后序的最后一个元素是根，它在中序中的位置把中序分成左右两棵子树；从后序末尾往前取，依次得到的是 根 → 右子树 → 左子树 的根。
+- [148. Sort List](problems/0148_sort_list/notes.md)
+  - 识别信号：对链表排序，进阶要求 O(n log n) 时间、O(1) 额外空间；链表不能按下标随机访问，快排找基准、堆排序都不顺手；而"合并两个有序链表"（21 题）只改指针、不用额外数组
+  - 关键一步：归并排序天然适合链表：合并两个有序链表只改 next 指针、不需要额外数组；自底向上按步长 1、2、4…… 切段两两合并，就连递归栈也省掉了。
+- [215. Kth Largest Element in an Array](problems/0215_kth_largest_element_in_an_array/notes.md)
+  - 识别信号：只要第 k 大的一个元素，不需要整体有序；题目提示"能否不排序"：维护前 k 大用堆；只找一个位置用快速选择
+  - 关键一步：快速选择：分组后 pivot 的排名就确定了，第 k 大只会落在其中一组，只递归那一组，期望工作量 n + n/2 + n/4 + …… = O(n)。
+- [427. Construct Quad Tree](problems/0427_construct_quad_tree/notes.md)
+  - 识别信号：网格边长 n 是 2 的幂，规则是"整块值相同就是叶子，否则四等分继续"——递归分治的结构直接写在题面里；节点有四个孩子，分别对应左上、右上、左下、右下四个象限
+  - 关键一步：自底向上合并：先建四个孩子，若四个都是叶子且值相同，当前块就是一个叶子；这样判断"整块相同"不需要再扫描格子。
+
+## 回溯（8）
+
+- [17. Letter Combinations of a Phone Number](problems/0017_letter_combinations_of_a_phone_number/notes.md)
+  - 识别信号：要返回所有可能的组合，结果数是每一位字母数的乘积 → 枚举全部方案；每一位独立地从一个固定的小集合中选一个字母
+  - 关键一步：每个数字是递归树的一层，这个数字对应的每个字母是一个分支，根到叶子的路径就是一个完整组合。
+- [22. Generate Parentheses](problems/0022_generate_parentheses/notes.md)
+  - 识别信号：要生成所有合法的括号串 → 枚举全部方案；"合法"可以在构造过程中逐字符判断：任何前缀里右括号都不多于左括号，左括号总数不超过 n
+  - 关键一步：只在 open < n 时加左括号、只在 close < open 时加右括号：这两个条件保证每一步的前缀都合法，生成出来的就全是答案。
+- [39. Combination Sum](problems/0039_combination_sum/notes.md)
+  - 识别信号：返回所有和为 target 的组合，同一个数可以无限次使用 → 枚举全部方案；组合不计顺序（[2, 2, 3] 和 [2, 3, 2] 是同一个）→ 需要规定选择顺序来去重
+  - 关键一步：递归时下一个数从当前数的下标开始选（包含它自己）：既允许重复使用同一个数，又保证每个组合只生成一次。
+- [46. Permutations](problems/0046_permutations/notes.md)
+  - 识别信号：返回所有排列，结果数是 n! → 枚举全部方案；每个位置可以放任何一个还没用过的数，顺序有意义
+  - 关键一步：第 i 层决定第 i 个位置放哪个数，只从还没用过的数里选；递归回来后撤销这次选择，再试下一个。
+- [52. N-Queens II](problems/0052_n_queens_ii/notes.md)
+  - 识别信号：n×n 棋盘放 n 个互不攻击的皇后、求方案数 → 每行恰好一个皇后，可以逐行搜索；冲突只来自同列、同主对角线、同副对角线三类，可以随搜索维护
+  - 关键一步：每行只放一个皇后，用"列""行 − 列""行 + 列"三类占用标记在 O(1) 内判断冲突，冲突的分支在当行就剪掉。
+- [77. Combinations](problems/0077_combinations/notes.md)
+  - 识别信号：返回从 1..n 中选 k 个数的所有组合 → 枚举全部方案；组合不计顺序 → 规定只往后选，避免同一组合以不同顺序重复出现
+  - 关键一步：下一个数只从上一个数之后开始选，并且只在剩余的数还够凑满 k 个时才继续，这样每个组合恰好按升序生成一次。
+- [79. Word Search](problems/0079_word_search/notes.md)
+  - 识别信号：在网格上沿上下左右相邻的格子拼出单词，同一格不能重复使用 → 路径搜索 + 访问标记；只问"是否存在"一条路径，但不同路径会共用格子 → 走不通时要撤销标记再试别的方向
+  - 关键一步：进入格子时标记、四个方向都试完后恢复：这样一条路径不会重复用格子，而失败的路径也不会挡住其他路径。
+- [212. Word Search II](problems/0212_word_search_ii/notes.md)
+  - 识别信号：和 79 题一样在网格上沿相邻格子拼单词、每格只能用一次 → 回溯；但要同时找很多个单词（最多 3·10^4 个），单词之间共享前缀 → 把单词表建成字典树，一次搜索同时匹配所有单词
+  - 关键一步：用字典树代替单词表：网格 DFS 每走一步，同时在字典树上走一步，走不下去就剪枝，一次搜索匹配所有单词。
+
+## 矩阵模拟（8）
+
+- [36. Valid Sudoku](problems/0036_valid_sudoku/notes.md)
+  - 识别信号：只判断已填数字在每行、每列、每个 3×3 宫内不重复，不要求数独能解；判重 → 哈希表 / 集合；棋盘固定 9×9
+  - 关键一步：用宫号公式 (i // 3)·3 + j // 3 把格子归到所在的 3×3 宫，这样行、列、宫的判重可以在同一遍扫描里完成。
+- [48. Rotate Image](problems/0048_rotate_image/notes.md)
+  - 识别信号：n × n 矩阵顺时针旋转 90 度；要求原地修改，不能另开一个矩阵
+  - 关键一步：(i, j) 旋转后到 (j, n − 1 − i)；同一层的四个对应位置构成一个长度为 4 的环，用一个临时变量轮换即可原地完成。
+- [54. Spiral Matrix](problems/0054_spiral_matrix/notes.md)
+  - 识别信号：按顺时针螺旋顺序输出 m × n 矩阵的所有元素；纯过程模拟：右、下、左、上循环转向
+  - 关键一步：每走完一条边就收缩对应的边界；走下一条边前检查 top ≤ bottom、left ≤ right，避免单行或单列被重复输出。
+- [73. Set Matrix Zeroes](problems/0073_set_matrix_zeroes/notes.md)
+  - 识别信号：原地修改矩阵，某个格子是 0 会影响它所在的整行和整列；边扫边改会让新写入的 0 继续"传染"，必须先记录、后修改
+  - 关键一步：分两遍：先标记含 0 的行和列，再清零；O(1) 空间版本把这些标记存在第一行和第一列里。
+- [130. Surrounded Regions](problems/0130_surrounded_regions/notes.md)
+  - 识别信号：要把"被 'X' 完全包围"的 'O' 区域翻成 'X'；区域是上下左右连通的 'O'；一个区域没被包围 ⇔ 它和边界上的某个 'O' 连通——判断"能否到达边界"比判断"是否被包围"容易
+  - 关键一步：不去找"被包围的"区域，而是从边界上的 'O' 出发找出所有"逃得出去的" 'O' 并做标记；没被标记到的 'O' 一定被包围，全部翻转。
+- [289. Game of Life](problems/0289_game_of_life/notes.md)
+  - 识别信号：所有格子要按"同一时刻的旧状态"同时更新，题目要求原地修改；每个格子的状态只有 0/1，可以用额外的数值同时编码"旧状态"和"新状态"
+  - 关键一步：用 -1（原来活、现在死）和 2（原来死、现在活）两个中间值，让同一个格子同时保留旧状态和新状态，统计邻居时看的永远是旧状态。
+- [733. Flood Fill](problems/0733_flood_fill/notes.md)
+  - 识别信号：从一个格子出发，把上下左右连通、颜色相同的区域全部改色；"连通区域"在网格里就是 BFS / DFS 遍历
+  - 关键一步：入队时立即改成新颜色，用"颜色是否还是原色"代替 visited 判断；新旧颜色相同时提前返回。
+- [909. Snakes and Ladders](problems/0909_snakes_and_ladders/notes.md)
+  - 识别信号：求从格子 1 到 n² 的"最少掷骰次数"，每次掷骰代价都是 1 → 无权图上的最短路；每个格子最多 6 个后继，蛇和梯子只是把落点改到别处，状态总数只有 n² 个
+  - 关键一步：把棋盘拉平成编号 1..n² 的图：掷一次骰子是一条权重为 1 的边，蛇和梯子只是改写这条边的终点，"最少掷骰次数"就是从 1 到 n² 的 BFS 最短路。
+
+## 位运算（7）
+
+- [52. N-Queens II](problems/0052_n_queens_ii/notes.md)
+  - 识别信号：n×n 棋盘放 n 个互不攻击的皇后、求方案数 → 每行恰好一个皇后，可以逐行搜索；冲突只来自同列、同主对角线、同副对角线三类，可以随搜索维护
+  - 关键一步：每行只放一个皇后，用"列""行 − 列""行 + 列"三类占用标记在 O(1) 内判断冲突，冲突的分支在当行就剪掉。
+- [67. Add Binary](problems/0067_add_binary/notes.md)
+  - 识别信号：两个二进制字符串相加，长度可达 10^4，不能指望转成固定宽度的整数（其他语言会溢出）；逐位相加加进位，和竖式加法一样
+  - 关键一步：每一位的和 = a 位 ⊕ b 位 ⊕ 进位，新进位 = 三者中至少两个为 1；从右往左一遍扫完。
+- [136. Single Number](problems/0136_single_number/notes.md)
+  - 识别信号：除一个数外，其他每个数恰好出现两次；要求线性时间、只用常数额外空间，排除了哈希表计数
+  - 关键一步：异或满足交换律和结合律，并且 a ^ a = 0、a ^ 0 = a，所以成对出现的数全部抵消，最后剩下的就是只出现一次的数。
+- [137. Single Number II](problems/0137_single_number_ii/notes.md)
+  - 识别信号：除一个数外，其他每个数恰好出现三次；要求线性时间、常数额外空间；异或只能抵消成对的数，这里需要"三次抵消"
+  - 关键一步：对每个二进制位把 1 的出现次数对 3 取余：出现三次的数在每一位上贡献 0 次或 3 次，取余后只剩下只出现一次的那个数的位。
+- [190. Reverse Bits](problems/0190_reverse_bits/notes.md)
+  - 识别信号：把整数当作 32 位二进制，要求把这 32 位倒序；位数固定为 32，操作次数是常数
+  - 关键一步：必须固定循环 32 次（而不是 n 变成 0 就停）：原来高位上的 0 也要依次移到结果的低位，结果才是完整的 32 位倒序。
+- [191. Number of 1 Bits](problems/0191_number_of_1_bits/notes.md)
+  - 识别信号：统计一个正整数二进制表示中 1 的个数（汉明重量）；只关心二进制位，适合直接做位运算
+  - 关键一步：n - 1 会把 n 最低位的那个 1 变成 0、它右边的 0 全变成 1，再和 n 相与，恰好只消掉这一个 1。
+- [201. Bitwise AND of Numbers Range](problems/0201_bitwise_and_of_numbers_range/notes.md)
+  - 识别信号：求连续整数区间 [left, right] 所有数的按位与，right 可达 2^31 - 1，不能逐个相与；连续整数的低位会 0 / 1 交替出现，按位与之后这些位必然是 0
+  - 关键一步：答案就是 left 和 right 二进制的公共前缀，后面补 0：从两者第一个不同的位开始往下，区间里每一位都出现过 0。
+
+## 堆（7）
+
+- [23. Merge k Sorted Lists](problems/0023_merge_k_sorted_lists/notes.md)
+  - 识别信号：合并 k 个已排序的序列，每一步要从 k 个当前最小值里挑出最小的那个；k 可达 10^4，逐条合并会让前面的节点被反复扫描
+  - 关键一步：下一个要接上的节点只可能是 k 条链表当前头节点中最小的那个；用大小为 k 的小顶堆维护这些头节点，每次取最小只要 O(log k)。
+- [215. Kth Largest Element in an Array](problems/0215_kth_largest_element_in_an_array/notes.md)
+  - 识别信号：只要第 k 大的一个元素，不需要整体有序；题目提示"能否不排序"：维护前 k 大用堆；只找一个位置用快速选择
+  - 关键一步：快速选择：分组后 pivot 的排名就确定了，第 k 大只会落在其中一组，只递归那一组，期望工作量 n + n/2 + n/4 + …… = O(n)。
+- [239. Sliding Window Maximum](problems/0239_sliding_window_maximum/notes.md)
+  - 识别信号：固定长度 k 的滑动窗口，求每个窗口的最大值；n 可达 10^5、k 也可以很大，每个窗口重新求最大值会超时
+  - 关键一步：一个元素如果比它后面进来的元素小，它在之后的任何窗口里都不可能是最大值，可以直接丢掉，所以队列保持单调递减。
+- [295. Find Median from Data Stream](problems/0295_find_median_from_data_stream/notes.md)
+  - 识别信号：数据流不断插入，插入和查询中位数交错进行（最多 5·10^4 次调用）；中位数只取决于"较小一半里最大的数"和"较大一半里最小的数"，不需要整体有序
+  - 关键一步：新数先放进 lo，再把 lo 的堆顶移到 hi；若此时 hi 比 lo 多，再把 hi 的堆顶移回 lo。这样既保证 lo 里每个数都不大于 hi 里每个数，又保证两边个数平衡，中位数就是 lo 的堆顶或两个堆顶的平均。
+- [373. Find K Pairs with Smallest Sums](problems/0373_find_k_pairs_with_smallest_sums/notes.md)
+  - 识别信号：两个已排序的数组，求数对和"前 k 小"的 k 个数对；数对总数 len(nums1)·len(nums2) 可达 10^10，不能全部生成；k ≤ 10^4 相对很小；固定 nums1[i] 时，数对和随 nums2 的下标递增而递增，相当于多条已排序的序列
+  - 关键一步：弹出 (i, j) 后只需把同一行的下一个 (i, j + 1) 放进堆：同一行后面的数对和不会更小，所以堆里只要保存每一行"下一个还没选的数对"，堆顶永远是全局下一个最小的数对。
+- [502. IPO](problems/0502_ipo/notes.md)
+  - 识别信号：最多做 k 个项目，每个项目要求当前资本 ≥ capital[i]，做完资本增加 profits[i]（利润非负），求最终最大资本；每一轮都要在"当前能做的项目"里挑利润最大的，而能做的项目集合随资本增长只增不减
+  - 关键一步：资本只增不减，所以"能做的项目"只会越来越多：按所需资本排序后用指针一次性加入大顶堆，每轮取堆顶利润最大的那个。
+- [Booking: Minimum Sum](problems/booking_minimum_sum/notes.md)
+  - 识别信号：题目（HackerRank，Booking 面试题）：给定整数数组 num 和整数 k，执行恰好 k 次操作，每次选一个元素 x 替换成 ceil(x / 2)，返回 k 次操作后数组之和的最小可能值；每次都要取"当前最大值"并把变小的值放回去，是典型的最大堆场景
+  - 关键一步：每次操作都作用在当前最大值上，用最大堆维护"当前最大"。
+
+## 设计（7）
+
+- [146. LRU Cache](problems/0146_lru_cache/notes.md)
+  - 识别信号：get 和 put 都要求 O(1) 平均时间；容量满时要淘汰"最久未使用"的键，而每次 get 或 put 都会改变使用顺序
+  - 关键一步：哈希表直接定位到双向链表里的节点，双向链表让任意节点 O(1) 摘下并移到最新端，两者结合才能让 get 和 put 都是 O(1)。
+- [155. Min Stack](problems/0155_min_stack/notes.md)
+  - 识别信号：设计一个栈，push、pop、top、getMin 都要 O(1)；pop 之后最小值要"回退"到之前的状态，所以每个栈状态都要记住当时的最小值
+  - 关键一步：push 时往 min_stack 压入 min(val, 当前最小值)，pop 时两个栈一起弹出，弹出后 min_stack 栈顶自动回到上一个状态的最小值。
+- [173. Binary Search Tree Iterator](problems/0173_binary_search_tree_iterator/notes.md)
+  - 识别信号：按从小到大的顺序逐个返回 BST 的元素，就是中序遍历；进阶要求 next 和 hasNext 均摊 O(1)，并且只用 O(h) 内存
+  - 关键一步：栈里保存的是还没访问的左链，栈顶就是下一个最小值；弹出一个节点后，只需把它右子树的整条左链压入栈。
+- [208. Implement Trie (Prefix Tree)](problems/0208_implement_trie_prefix_tree/notes.md)
+  - 识别信号：需要按前缀查询（startsWith），哈希集合只能做整词匹配；字符集固定为 26 个小写字母，单词之间大量共享前缀
+  - 关键一步：每个节点代表一个前缀，子节点按下一个字符分叉；search 和 startsWith 走的是同一条路径，区别只在最后是否要求该节点带"单词结尾"标记。
+- [211. Design Add and Search Words Data Structure](problems/0211_design_add_and_search_words_data_structure/notes.md)
+  - 识别信号：查询中的 "." 能匹配任意一个字母 → 遇到它要在多个分支里尝试；单词逐字符匹配、大量共享前缀 → 字典树
+  - 关键一步：遇到 "." 时，对当前节点的每一个子节点递归匹配剩下的部分，任何一条分支成功就返回 True。
+- [295. Find Median from Data Stream](problems/0295_find_median_from_data_stream/notes.md)
+  - 识别信号：数据流不断插入，插入和查询中位数交错进行（最多 5·10^4 次调用）；中位数只取决于"较小一半里最大的数"和"较大一半里最小的数"，不需要整体有序
+  - 关键一步：新数先放进 lo，再把 lo 的堆顶移到 hi；若此时 hi 比 lo 多，再把 hi 的堆顶移回 lo。这样既保证 lo 里每个数都不大于 hi 里每个数，又保证两边个数平衡，中位数就是 lo 的堆顶或两个堆顶的平均。
+- [380. Insert Delete GetRandom O(1)](problems/0380_insert_delete_getrandom_o_1/notes.md)
+  - 识别信号：要求 insert、remove、getRandom 都是平均 O(1)；哈希表能 O(1) 增删查，但不能 O(1) 等概率随机取；数组能 O(1) 随机取，但不能 O(1) 删除中间元素，需要把两者结合
+  - 关键一步：删除中间元素时，用数组末尾元素覆盖被删位置、更新末尾元素在哈希表里的下标，再 pop 末尾，避免数组整体移位。
 
 ## 哈希计数（6）
 
@@ -347,62 +827,35 @@
   - 识别信号：固定长度 k 的滑动窗口，求每个窗口的最大值；n 可达 10^5、k 也可以很大，每个窗口重新求最大值会超时
   - 关键一步：一个元素如果比它后面进来的元素小，它在之后的任何窗口里都不可能是最大值，可以直接丢掉，所以队列保持单调递减。
 
-## 矩阵模拟（6）
+## 二叉搜索树（4）
 
-- [36. Valid Sudoku](problems/0036_valid_sudoku/notes.md)
-  - 识别信号：只判断已填数字在每行、每列、每个 3×3 宫内不重复，不要求数独能解；判重 → 哈希表 / 集合；棋盘固定 9×9
-  - 关键一步：用宫号公式 (i // 3)·3 + j // 3 把格子归到所在的 3×3 宫，这样行、列、宫的判重可以在同一遍扫描里完成。
-- [48. Rotate Image](problems/0048_rotate_image/notes.md)
-  - 识别信号：n × n 矩阵顺时针旋转 90 度；要求原地修改，不能另开一个矩阵
-  - 关键一步：(i, j) 旋转后到 (j, n − 1 − i)；同一层的四个对应位置构成一个长度为 4 的环，用一个临时变量轮换即可原地完成。
-- [54. Spiral Matrix](problems/0054_spiral_matrix/notes.md)
-  - 识别信号：按顺时针螺旋顺序输出 m × n 矩阵的所有元素；纯过程模拟：右、下、左、上循环转向
-  - 关键一步：每走完一条边就收缩对应的边界；走下一条边前检查 top ≤ bottom、left ≤ right，避免单行或单列被重复输出。
-- [73. Set Matrix Zeroes](problems/0073_set_matrix_zeroes/notes.md)
-  - 识别信号：原地修改矩阵，某个格子是 0 会影响它所在的整行和整列；边扫边改会让新写入的 0 继续"传染"，必须先记录、后修改
-  - 关键一步：分两遍：先标记含 0 的行和列，再清零；O(1) 空间版本把这些标记存在第一行和第一列里。
-- [289. Game of Life](problems/0289_game_of_life/notes.md)
-  - 识别信号：所有格子要按"同一时刻的旧状态"同时更新，题目要求原地修改；每个格子的状态只有 0/1，可以用额外的数值同时编码"旧状态"和"新状态"
-  - 关键一步：用 -1（原来活、现在死）和 2（原来死、现在活）两个中间值，让同一个格子同时保留旧状态和新状态，统计邻居时看的永远是旧状态。
-- [733. Flood Fill](problems/0733_flood_fill/notes.md)
-  - 识别信号：从一个格子出发，把上下左右连通、颜色相同的区域全部改色；"连通区域"在网格里就是 BFS / DFS 遍历
-  - 关键一步：入队时立即改成新颜色，用"颜色是否还是原色"代替 visited 判断；新旧颜色相同时提前返回。
+- [98. Validate Binary Search Tree](problems/0098_validate_binary_search_tree/notes.md)
+  - 识别信号：判断一棵树是否满足 BST 定义：左子树所有节点都小于根、右子树所有节点都大于根，且左右子树也都是 BST；关键是"整棵子树"，不只是直接孩子
+  - 关键一步：每个节点的合法取值是一个开区间 (low, high)，它由路径上所有祖先共同决定：往左走把 high 改成当前节点值，往右走把 low 改成当前节点值，节点值不在区间内就不是 BST。
+- [173. Binary Search Tree Iterator](problems/0173_binary_search_tree_iterator/notes.md)
+  - 识别信号：按从小到大的顺序逐个返回 BST 的元素，就是中序遍历；进阶要求 next 和 hasNext 均摊 O(1)，并且只用 O(h) 内存
+  - 关键一步：栈里保存的是还没访问的左链，栈顶就是下一个最小值；弹出一个节点后，只需把它右子树的整条左链压入栈。
+- [230. Kth Smallest Element in a BST](problems/0230_kth_smallest_element_in_a_bst/notes.md)
+  - 识别信号：树是二叉搜索树，问"第 k 小"的元素；BST 的中序遍历就是升序，第 k 小 = 中序遍历的第 k 个节点
+  - 关键一步：中序遍历按从小到大的顺序访问 BST 的节点，所以只要在中序遍历中数到第 k 个被访问的节点就可以停下，它就是答案。
+- [530. Minimum Absolute Difference in BST](problems/0530_minimum_absolute_difference_in_bst/notes.md)
+  - 识别信号：树是二叉搜索树（BST），而问题是"任意两个节点值之差的最小值"；BST 的中序遍历是升序序列，最小差只可能出现在升序序列的相邻两个数之间
+  - 关键一步：中序遍历时维护"上一个访问的节点值" prev，每访问一个节点就用 当前值 − prev 更新答案；因为中序是升序，这个差一定是非负的相邻差。
 
-## 递归（6）
+## 前后缀最大值（4）
 
-- [94. Binary Tree Inorder Traversal](problems/0094_binary_tree_inorder_traversal/notes.md)
-  - 识别信号：要求按"左子树 → 根 → 右子树"的顺序输出节点值；进阶要求不用递归，提示要用显式栈模拟递归
-  - 关键一步：中序就是"一路向左走到底，回来时记录当前节点，再去右子树"；递归和栈写法都只是在实现这个顺序。
-- [100. Same Tree](problems/0100_same_tree/notes.md)
-  - 识别信号：判断两棵树结构和节点值是否完全相同；结论可以拆成"根相同 且 左子树相同 且 右子树相同"
-  - 关键一步：先处理"两个都空"和"只有一个空"这两种情况，剩下的就是值比较加左右递归。
-- [101. Symmetric Tree](problems/0101_symmetric_tree/notes.md)
-  - 识别信号：判断树是否是自身的镜像，也就是左子树和右子树互为镜像；进阶要求递归和迭代两种写法
-  - 关键一步：比较的是成对的节点：左边的左孩子对右边的右孩子，左边的右孩子对右边的左孩子。
-- [104. Maximum Depth of Binary Tree](problems/0104_maximum_depth_of_binary_tree/notes.md)
-  - 识别信号：求根到最远叶子的节点数；整棵树的答案可以由左右子树的答案合成：max(左深度, 右深度) + 1
-  - 关键一步：深度 = max(左子树深度, 右子树深度) + 1，空节点深度为 0。
-- [108. Convert Sorted Array to Binary Search Tree](problems/0108_convert_sorted_array_to_binary_search_tree/notes.md)
-  - 识别信号：输入是升序数组，要构造高度平衡的二叉搜索树；升序数组就是 BST 的中序遍历；"平衡"提示每次取中间元素当根
-  - 关键一步：取区间中点作为根：左右两段大小最多差 1，整棵树自然高度平衡，且中序仍是原数组。
-- [110. Balanced Binary Tree](problems/0110_balanced_binary_tree/notes.md)
-  - 识别信号：判断每个节点左右子树高度差是否都不超过 1；既要子树的"是否平衡"，又要子树的"高度"，适合后序遍历一次返回两样信息
-  - 关键一步：用 -1 表示"已不平衡"，非负数表示高度，一个返回值同时带回两种信息，每个节点只算一次。
-
-## BFS（4）
-
-- [45. Jump Game II](problems/0045_jump_game_ii/notes.md)
-  - 识别信号：nums[i] 是从 i 最多能跳的距离，求到达最后一个位置的最少跳跃次数；保证能到达终点；求"最少步数" → 按步数分层（BFS），而每一层都是一段连续区间
-  - 关键一步：第 s 步能到达的位置是连续的一段，扫到这一段的右边界 end 时必须再跳一次，新的右边界就是这一段里能跳到的最远位置 max_len。
-- [101. Symmetric Tree](problems/0101_symmetric_tree/notes.md)
-  - 识别信号：判断树是否是自身的镜像，也就是左子树和右子树互为镜像；进阶要求递归和迭代两种写法
-  - 关键一步：比较的是成对的节点：左边的左孩子对右边的右孩子，左边的右孩子对右边的左孩子。
-- [733. Flood Fill](problems/0733_flood_fill/notes.md)
-  - 识别信号：从一个格子出发，把上下左右连通、颜色相同的区域全部改色；"连通区域"在网格里就是 BFS / DFS 遍历
-  - 关键一步：入队时立即改成新颜色，用"颜色是否还是原色"代替 visited 判断；新旧颜色相同时提前返回。
-- [2146. K Highest Ranked Items Within a Price Range](problems/2146_k_highest_ranked_items_within_a_price_range/notes.md)
-  - 识别信号：网格里有墙（0）、空地（1）、商品（价格），每步上下左右走一格，排名第一关键字是"从起点出发的最短步数"；每步代价都是 1 的最短路，就是从起点做 BFS；排名规则是多关键字（距离、价格、行、列），收集后按元组排序
-  - 关键一步：BFS 按层扩展天然按距离从小到大收集商品；某一层处理完时已收集够 k 个，就不必再往外走，剩下只需按 (距离, 价格, 行, 列) 排序。
+- [42. Trapping Rain Water](problems/0042_trapping_rain_water/notes.md)
+  - 识别信号：每个位置的答案 = min(左边最高, 右边最高) − 自身高度，即由"左右两侧的最大值"共同决定；原注释：这类需要计算左右最大高度的最小值的题，第一反应是从左到右取最大值，再从右到左取最大值，然后比较两者最小值，往往可以简化为维护单方向最大值，根据具体情况判断左右处理顺序
+  - 关键一步：左右指针哪边当前高度更低就处理哪边：另一侧已经有一块不低于它的挡板，所以这个位置的水位只取决于它这一侧的最大值。
+- [121. Best Time to Buy and Sell Stock](problems/0121_best_time_to_buy_and_sell_stock/notes.md)
+  - 识别信号：只买卖一次，且必须先买后卖，求 prices[j] − prices[i]（i < j）的最大值；对每个卖出日，最优买入价就是它之前的最低价
+  - 关键一步：从左往右扫，维护目前为止的最低价 min，每天的最大利润就是 price − min。
+- [123. Best Time to Buy and Sell Stock III](problems/0123_best_time_to_buy_and_sell_stock_iii/notes.md)
+  - 识别信号：买卖股票，最多完成两笔交易，且手上最多持有一股；每天能做什么只取决于"已经完成了几次买卖、现在手里有没有股票"
+  - 关键一步：把"第几次买入、第几次卖出"做成状态：第二次买入的成本从第一次卖出后的余额里扣，这样一次遍历就同时管住两笔交易。
+- [135. Candy](problems/0135_candy/notes.md)
+  - 识别信号：每人至少 1 颗，评分比相邻高的要比相邻的多，求最少总数；约束同时来自左邻居和右邻居，可以拆成"只看左边"和"只看右边"两个方向分别满足
+  - 关键一步：左右各扫一遍：第二遍只在"评分高于右邻且糖果不多于右邻"时改成右邻 + 1，这等价于取两个方向要求的最大值。
 
 ## 区间（4）
 
@@ -419,19 +872,7 @@
   - 识别信号：一组区间，用最少的"点"覆盖所有区间（一支箭就是一个 x 坐标）；端点相接也算重叠（x_start ≤ x ≤ x_end）
   - 关键一步：按起点排序后，当前组的交集右端是 min(各终点)；新气球起点 ≤ 这个右端就能共用一支箭，否则必须再射一支。
 
-## 前后缀最大值（3）
-
-- [42. Trapping Rain Water](problems/0042_trapping_rain_water/notes.md)
-  - 识别信号：每个位置的答案 = min(左边最高, 右边最高) − 自身高度，即由"左右两侧的最大值"共同决定；原注释：这类需要计算左右最大高度的最小值的题，第一反应是从左到右取最大值，再从右到左取最大值，然后比较两者最小值，往往可以简化为维护单方向最大值，根据具体情况判断左右处理顺序
-  - 关键一步：左右指针哪边当前高度更低就处理哪边：另一侧已经有一块不低于它的挡板，所以这个位置的水位只取决于它这一侧的最大值。
-- [121. Best Time to Buy and Sell Stock](problems/0121_best_time_to_buy_and_sell_stock/notes.md)
-  - 识别信号：只买卖一次，且必须先买后卖，求 prices[j] − prices[i]（i < j）的最大值；对每个卖出日，最优买入价就是它之前的最低价
-  - 关键一步：从左往右扫，维护目前为止的最低价 min，每天的最大利润就是 price − min。
-- [135. Candy](problems/0135_candy/notes.md)
-  - 识别信号：每人至少 1 颗，评分比相邻高的要比相邻的多，求最少总数；约束同时来自左邻居和右邻居，可以拆成"只看左边"和"只看右边"两个方向分别满足
-  - 关键一步：左右各扫一遍：第二遍只在"评分高于右邻且糖果不多于右邻"时改成右邻 + 1，这等价于取两个方向要求的最大值。
-
-## 快慢指针（3）
+## 快慢指针（4）
 
 - [19. Remove Nth Node From End of List](problems/0019_remove_nth_node_from_end_of_list/notes.md)
   - 识别信号：要删"倒数第 n 个"节点，而单链表只能从头往后走；进阶要求只遍历一次：让一个指针比另一个固定落后 n 步
@@ -439,21 +880,18 @@
 - [141. Linked List Cycle](problems/0141_linked_list_cycle/notes.md)
   - 识别信号：判断链表是否有环；进阶要求 O(1) 额外空间，提示快慢指针
   - 关键一步：快指针每步比慢指针多走 1 步，进环后两者距离每步缩小 1，一定会相遇。
+- [148. Sort List](problems/0148_sort_list/notes.md)
+  - 识别信号：对链表排序，进阶要求 O(n log n) 时间、O(1) 额外空间；链表不能按下标随机访问，快排找基准、堆排序都不顺手；而"合并两个有序链表"（21 题）只改指针、不用额外数组
+  - 关键一步：归并排序天然适合链表：合并两个有序链表只改 next 指针、不需要额外数组；自底向上按步长 1、2、4…… 切段两两合并，就连递归栈也省掉了。
 - [202. Happy Number](problems/0202_happy_number/notes.md)
   - 识别信号：反复做同一个变换，结果要么到达 1，要么无限循环；判断"是否进入循环"：记录见过的值，或者用快慢指针判环
   - 关键一步：平方和序列只能到 1 或进入循环，问题等价于判环：见过的数再次出现，就不是快乐数。
 
-## 二分查找（2）
+## 前缀和（3）
 
-- [35. Search Insert Position](problems/0035_search_insert_position/notes.md)
-  - 识别信号：有序、无重复的数组，找 target 的下标或应插入的位置；题目明确要求 O(log n)
-  - 关键一步：插入位置就是"第一个 ≥ target 的下标"，二分到 left == right 时它就是答案。
-- [69. Sqrt(x)](problems/0069_sqrt_x/notes.md)
-  - 识别信号：求满足 k² ≤ x 的最大整数 k，而 k² 随 k 单调递增；不允许使用内置的开方或幂运算；x 最大到 2^31 − 1
-  - 关键一步：k² ≤ x 对 k 单调，二分找最后一个满足的 k；牛顿迭代则用切线逼近 √x，整数部分稳定后即为答案。
-
-## 前缀和（2）
-
+- [53. Maximum Subarray](problems/0053_maximum_subarray/notes.md)
+  - 识别信号：求和最大的非空连续子数组，只要最大和、不要求位置；n 可达 10^5，枚举所有子数组 O(n²) 会超时；"以每个位置结尾的最优解"只和前一个位置有关
+  - 关键一步：以 i 结尾的最大子数组，要么接在以 i − 1 结尾的最优子数组后面，要么从 i 重新开始；前面累计的和是负数就丢掉。
 - [134. Gas Station](problems/0134_gas_station/notes.md)
   - 识别信号：环形路线，从某个起点出发油量全程不能为负，求起点；题目保证有解时解唯一；总油量 ≥ 总消耗是有解的充要条件
   - 关键一步：从 start 出发到 i 时累计油量为负，则 start 到 i 之间都不能当起点，直接把起点跳到 i + 1。
@@ -461,38 +899,47 @@
   - 识别信号：每个位置的答案 = 左边所有数的乘积 × 右边所有数的乘积；不允许用除法、要求 O(n)；进阶要求 O(1) 额外空间（输出数组不计）
   - 关键一步：把"除自身以外的乘积"拆成左侧乘积 × 右侧乘积，两者都能一遍递推出来。
 
-## 动态规划（2）
+## 图（3）
 
-- [70. Climbing Stairs](problems/0070_climbing_stairs/notes.md)
-  - 识别信号：求"有多少种走法"，每一步只有固定几种选择（1 阶或 2 阶）；到第 i 阶的方案数只依赖前一两阶的结果
-  - 关键一步：最后一步不是跨 1 阶就是跨 2 阶，所以 f(n) = f(n − 1) + f(n − 2)，就是斐波那契数列。
-- [121. Best Time to Buy and Sell Stock](problems/0121_best_time_to_buy_and_sell_stock/notes.md)
-  - 识别信号：只买卖一次，且必须先买后卖，求 prices[j] − prices[i]（i < j）的最大值；对每个卖出日，最优买入价就是它之前的最低价
-  - 关键一步：从左往右扫，维护目前为止的最低价 min，每天的最大利润就是 price − min。
+- [207. Course Schedule](problems/0207_course_schedule/notes.md)
+  - 识别信号："上 a 之前必须先上 b"是有向边 b → a，问能否全部上完；能全部完成 ⇔ 有向图里没有环
+  - 关键一步：入度为 0 的课可以马上上，上完后把它从图中删掉、更新后继的入度；不断删除入度为 0 的点，如果最后还有点删不掉，剩下的点一定在环上。
+- [210. Course Schedule II](problems/0210_course_schedule_ii/notes.md)
+  - 识别信号：先修关系构成有向图，要输出一个满足所有先修关系的上课顺序；有环时不存在合法顺序；合法顺序不唯一，返回任意一个即可
+  - 关键一步：每次只上入度为 0 的课（它的先修课都已经上完），上完后更新后继的入度；入度为 0 的课被取出的顺序本身就是一个合法的上课顺序。
+- [399. Evaluate Division](problems/0399_evaluate_division/notes.md)
+  - 识别信号：已知若干 a / b = k，求 x / y；比值可以传递：a / c = (a / b) · (b / c)；把变量看成节点、每个等式看成带权的边，查询就变成找一条从 x 到 y 的路径
+  - 关键一步：x / y 等于从 x 到 y 路径上各条边比值的乘积：正向边乘 v，反向边乘 1 / v，所以建图时每个等式要同时加上正反两条边。
 
-## 堆（2）
+## 字典树（3）
 
-- [239. Sliding Window Maximum](problems/0239_sliding_window_maximum/notes.md)
-  - 识别信号：固定长度 k 的滑动窗口，求每个窗口的最大值；n 可达 10^5、k 也可以很大，每个窗口重新求最大值会超时
-  - 关键一步：一个元素如果比它后面进来的元素小，它在之后的任何窗口里都不可能是最大值，可以直接丢掉，所以队列保持单调递减。
-- [Booking: Minimum Sum](problems/booking_minimum_sum/notes.md)
-  - 识别信号：题目（HackerRank，Booking 面试题）：给定整数数组 num 和整数 k，执行恰好 k 次操作，每次选一个元素 x 替换成 ceil(x / 2)，返回 k 次操作后数组之和的最小可能值；每次都要取"当前最大值"并把变小的值放回去，是典型的最大堆场景
-  - 关键一步：每次操作都作用在当前最大值上，用最大堆维护"当前最大"。
+- [208. Implement Trie (Prefix Tree)](problems/0208_implement_trie_prefix_tree/notes.md)
+  - 识别信号：需要按前缀查询（startsWith），哈希集合只能做整词匹配；字符集固定为 26 个小写字母，单词之间大量共享前缀
+  - 关键一步：每个节点代表一个前缀，子节点按下一个字符分叉；search 和 startsWith 走的是同一条路径，区别只在最后是否要求该节点带"单词结尾"标记。
+- [211. Design Add and Search Words Data Structure](problems/0211_design_add_and_search_words_data_structure/notes.md)
+  - 识别信号：查询中的 "." 能匹配任意一个字母 → 遇到它要在多个分支里尝试；单词逐字符匹配、大量共享前缀 → 字典树
+  - 关键一步：遇到 "." 时，对当前节点的每一个子节点递归匹配剩下的部分，任何一条分支成功就返回 True。
+- [212. Word Search II](problems/0212_word_search_ii/notes.md)
+  - 识别信号：和 79 题一样在网格上沿相邻格子拼单词、每格只能用一次 → 回溯；但要同时找很多个单词（最多 3·10^4 个），单词之间共享前缀 → 把单词表建成字典树，一次搜索同时匹配所有单词
+  - 关键一步：用字典树代替单词表：网格 DFS 每走一步，同时在字典树上走一步，走不下去就剪枝，一次搜索匹配所有单词。
 
-## 设计（2）
+## 并查集（2）
 
-- [155. Min Stack](problems/0155_min_stack/notes.md)
-  - 识别信号：设计一个栈，push、pop、top、getMin 都要 O(1)；pop 之后最小值要"回退"到之前的状态，所以每个栈状态都要记住当时的最小值
-  - 关键一步：push 时往 min_stack 压入 min(val, 当前最小值)，pop 时两个栈一起弹出，弹出后 min_stack 栈顶自动回到上一个状态的最小值。
-- [380. Insert Delete GetRandom O(1)](problems/0380_insert_delete_getrandom_o_1/notes.md)
-  - 识别信号：要求 insert、remove、getRandom 都是平均 O(1)；哈希表能 O(1) 增删查，但不能 O(1) 等概率随机取；数组能 O(1) 随机取，但不能 O(1) 删除中间元素，需要把两者结合
-  - 关键一步：删除中间元素时，用数组末尾元素覆盖被删位置、更新末尾元素在哈希表里的下标，再 pop 末尾，避免数组整体移位。
+- [200. Number of Islands](problems/0200_number_of_islands/notes.md)
+  - 识别信号：二维网格，上下左右相邻的 '1' 连成一块，求块（连通分量）的个数；典型的网格连通分量计数
+  - 关键一步：扫描到一个还没访问过的 '1' 时答案加 1，并立刻把它所在的整座岛"淹掉"（全部标记为已访问），这样同一座岛的其他格子之后都会被跳过，每座岛只被数一次。
+- [399. Evaluate Division](problems/0399_evaluate_division/notes.md)
+  - 识别信号：已知若干 a / b = k，求 x / y；比值可以传递：a / c = (a / b) · (b / c)；把变量看成节点、每个等式看成带权的边，查询就变成找一条从 x 到 y 的路径
+  - 关键一步：x / y 等于从 x 到 y 路径上各条边比值的乘积：正向边乘 v，反向边乘 1 / v，所以建图时每个等式要同时加上正反两条边。
 
-## 位运算（1）
+## 拓扑排序（2）
 
-- [67. Add Binary](problems/0067_add_binary/notes.md)
-  - 识别信号：两个二进制字符串相加，长度可达 10^4，不能指望转成固定宽度的整数（其他语言会溢出）；逐位相加加进位，和竖式加法一样
-  - 关键一步：每一位的和 = a 位 ⊕ b 位 ⊕ 进位，新进位 = 三者中至少两个为 1；从右往左一遍扫完。
+- [207. Course Schedule](problems/0207_course_schedule/notes.md)
+  - 识别信号："上 a 之前必须先上 b"是有向边 b → a，问能否全部上完；能全部完成 ⇔ 有向图里没有环
+  - 关键一步：入度为 0 的课可以马上上，上完后把它从图中删掉、更新后继的入度；不断删除入度为 0 的点，如果最后还有点删不掉，剩下的点一定在环上。
+- [210. Course Schedule II](problems/0210_course_schedule_ii/notes.md)
+  - 识别信号：先修关系构成有向图，要输出一个满足所有先修关系的上课顺序；有环时不存在合法顺序；合法顺序不唯一，返回任意一个即可
+  - 关键一步：每次只上入度为 0 的课（它的先修课都已经上完），上完后更新后继的入度；入度为 0 的课被取出的顺序本身就是一个合法的上课顺序。
 
 ## 单调队列（1）
 

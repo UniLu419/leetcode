@@ -1,6 +1,6 @@
 # LeetCode Practice
 
-In plain terms: every problem lives in its own folder with its test cases, study notes and every past attempt. Redoing a problem happens in a separate practice area that shows only the function signature, so old answers stay out of sight until the new attempt passes and is archived.
+In plain terms: every problem lives in its own folder with its test cases, study notes and every past attempt. Solving or redoing a problem happens in a separate practice area that shows only the function signature, so old answers stay out of sight until the new attempt passes and is archived. Problems from a list that have not been solved yet already have their folder, official examples and notes, so the hint layers work on the first attempt too.
 
 Requires Python 3.10+, standard library only.
 
@@ -10,7 +10,8 @@ In plain terms: pick a problem that is due, solve it blind, reveal hints only wh
 
 ```bash
 python3 lc.py next       # problems most due for a redo
-python3 lc.py redo 42    # blank practice file: signature only
+python3 lc.py plan top   # problems in a list that are not done yet
+python3 lc.py start 42   # blank practice file: signature only (same as redo)
 python3 lc.py test       # sample cases, then a large input for speed
 python3 lc.py hint       # reveal the next hint layer
 python3 lc.py done       # archive, compare with past attempts, review the notes
@@ -35,7 +36,8 @@ Archiving runs the tests again, prints every past attempt's speed on the large i
 | Command | What it does |
 | ------- | ------------ |
 | `python3 lc.py new "21. Merge Two Sorted Lists"` | Creates the problem folder (notes and test-case templates) and a practice file |
-| `python3 lc.py redo <problem>` | Starts a blind redo of an archived problem |
+| `python3 lc.py start <problem>` | Starts a problem in the practice area: a first attempt or a blind redo (`redo` is the same command) |
+| `python3 lc.py plan [name] [--all]` | Progress through a problem list, by group; lists the problems not done yet |
 | `python3 lc.py test [problem]` | Tests practice-area attempts |
 | `python3 lc.py hint [problem]` | Reveals the next hint layer |
 | `python3 lc.py done [problem] [--optimal yes\|no]` | Archives a passing attempt; the flag skips the question |
@@ -59,6 +61,8 @@ In plain terms: a problem comes back for a redo after 3 days; each consecutive r
 | `problems/<number>_<name>/cases.py` | Sample inputs with expected outputs, plus an optional large input |
 | `problems/<number>_<name>/YYmmDD.py` | One file per attempt, named by date; a second attempt on the same day is `YYmmDD_2.py` |
 | `problems/<number>_<name>/YYmmDD.java`, `.js` | Earlier Java and JavaScript attempts; kept for reference and not run by the tool |
+| `problems/<number>_<name>/template.py` | LeetCode's Python code template; the first attempt's practice file is built from it |
+| `plans/<list>.json` | Problem lists (e.g. Top Interview 150) with their groups, in LeetCode's order |
 | `problems/booking_<name>/` | Interview problems without a LeetCode number, same layout |
 | `practice/` | Attempts in progress; not committed |
 | `history.csv` | One row per archived redo |

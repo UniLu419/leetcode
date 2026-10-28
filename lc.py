@@ -14,6 +14,7 @@ import json
 import re
 import signal
 import sys
+import textwrap
 import time
 import traceback
 import unicodedata
@@ -26,6 +27,7 @@ PRACTICE = ROOT / "practice"
 STATE_FILE = PRACTICE / ".state.json"
 HISTORY = ROOT / "history.csv"
 REVIEW = ROOT / "REVIEW.md"
+PLANS = ROOT / "plans"
 
 # Hint layers in reveal order; the layer after the last section prints the reference attempt.
 HINT_SECTIONS = ["题型", "识别信号", "解题步骤", "关键一步"]
@@ -116,9 +118,14 @@ class Problem:
     def notes(self) -> dict:
         return parse_notes(self.notes_path.read_text(encoding="utf-8"))
 
+    @property
+    def template(self) -> Path:
+        """LeetCode's Python code template, used for the first attempt's stub."""
+        return self.path / "template.py"
+
     def attempts(self) -> list:
-        """Python attempts; these are the ones the tool runs."""
-        return sorted((p for p in self.path.glob("*.py") if p.name != "cases.py"), key=attempt_sort_key)
+        """Dated Python attempts; these are the ones the tool runs."""
+        return sorted((p for p in self.path.glob("*.py") if attempt_date(p)), key=attempt_sort_key)
 
     def dated_files(self) -> list:
         """Attempts in every language (Python, Java, JavaScript), named by date."""
@@ -394,9 +401,26 @@ def practice_header(problem: Problem) -> list:
     return lines
 
 
+def custom_node_classes(tree: ast.Module) -> list:
+    """Problem-specific node classes (e.g. graph or quad-tree Node), defined in code or in LeetCode's docstring."""
+    def wanted(n):
+        return isinstance(n, ast.ClassDef) and n.name.endswith("Node") and n.name not in NODE_NAMES
+
+    found = []
+    for node in tree.body:
+        if wanted(node):
+            found.append(node)
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and "class " in str(node.value.value):
+            try:
+                found += [n for n in ast.parse(textwrap.dedent(node.value.value)).body if wanted(n)]
+            except SyntaxError:
+                pass
+    return found
+
+
 def make_stub(problem: Problem) -> str:
     """Signature-only skeleton built from an archived attempt; no bodies, helpers or imports leak through."""
-    source = problem.reference_attempt()
+    source = problem.reference_attempt() or (problem.template if problem.template.exists() else None)
     if source is None:
         return NEW_STUB.format(key=problem.key)
     cases = load_cases(problem)
@@ -406,7 +430,9 @@ def make_stub(problem: Problem) -> str:
     else:
         keep = {cases.METHOD}
     stub = None
-    for node in ast.parse(source.read_text(encoding="utf-8")).body:
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    node_classes = custom_node_classes(tree)
+    for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == class_name:
             methods = [n for n in node.body if isinstance(n, ast.FunctionDef) and n.name in keep]
             for method in methods:
@@ -418,14 +444,15 @@ def make_stub(problem: Problem) -> str:
             break
     if stub is None:
         die(f"{rel(source)} 里找不到 class {class_name}")
-    names = {n.id for n in ast.walk(stub) if isinstance(n, ast.Name)}
+    names = {n.id for c in node_classes + [stub] for n in ast.walk(c) if isinstance(n, ast.Name)}
     imports = []
     if names & TYPING_NAMES:
         imports.append(f"from typing import {', '.join(sorted(names & TYPING_NAMES))}")
     if names & NODE_NAMES:
         imports.append(f"from helpers import {', '.join(sorted(names & NODE_NAMES))}")
     head = "\n" + "\n".join(imports) + "\n\n\n" if imports else "\n"
-    return head + re.sub(r"^(class .*:)\n\n", r"\1\n", ast.unparse(stub)) + "\n"
+    classes = [re.sub(r"^(class .*:)\n\n", r"\1\n", ast.unparse(c)) for c in node_classes + [stub]]
+    return head + "\n\n\n".join(classes) + "\n"
 
 
 def start_practice(problem: Problem, body: str):
@@ -710,6 +737,38 @@ def cmd_index(args):
     print(f"已更新 {rel(REVIEW)}：{len(groups)} 个题型")
 
 
+def load_plans() -> list:
+    return [json.loads(p.read_text(encoding="utf-8")) for p in sorted(PLANS.glob("*.json"))] if PLANS.is_dir() else []
+
+
+def cmd_plan(args):
+    plans = load_plans()
+    if not plans:
+        die("plans/ 里还没有题单")
+    solved = {p.ref for p in all_problems() if p.dated_files()}
+    if not args.name:
+        for plan in plans:
+            ids = [str(q["id"]) for g in plan["groups"] for q in g["problems"]]
+            print(f"{plan['name']}: 已做 {sum(i in solved for i in ids)}/{len(ids)}    python3 lc.py plan {plan['slug']}")
+        return 0
+    matches = [p for p in plans if args.name.lower() in p["slug"] or args.name.lower() in p["name"].lower()]
+    if len(matches) != 1:
+        die(f"「{args.name}」匹配到 {len(matches)} 个题单: {', '.join(p['slug'] for p in plans)}")
+    plan = matches[0]
+    total = done = 0
+    for group in plan["groups"]:
+        problems = group["problems"]
+        group_done = sum(str(q["id"]) in solved for q in problems)
+        total, done = total + len(problems), done + group_done
+        print(f"{group['name']}  {group_done}/{len(problems)}")
+        for q in problems:
+            is_done = str(q["id"]) in solved
+            if args.all or not is_done:
+                print(f"  {'✓' if is_done else '·'} {q['id']:>5}  {q['title']}  ({q['difficulty']})")
+    print(f"\n{plan['name']}: 已做 {done}/{total}。开始一道题: python3 lc.py start <题号>")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="LeetCode 刷题工具：盲做重做、分层提示、归档复盘。")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -718,7 +777,7 @@ def main(argv=None):
     p.add_argument("title", help='如 "42. Trapping Rain Water"')
     p.set_defaults(func=cmd_new)
 
-    p = sub.add_parser("redo", help="重做旧题：练习区只给函数签名，看不到旧答案")
+    p = sub.add_parser("redo", aliases=["start"], help="开始做一道已建好的题（新题或重做）：练习区只给函数签名")
     p.add_argument("problem", help="题号或题名片段")
     p.set_defaults(func=cmd_redo)
 
@@ -745,6 +804,11 @@ def main(argv=None):
 
     p = sub.add_parser("index", help="根据各题笔记生成按题型分组的 REVIEW.md")
     p.set_defaults(func=cmd_index)
+
+    p = sub.add_parser("plan", help="题单进度：按分组列出还没做的题")
+    p.add_argument("name", nargs="?", help="题单名片段；省略则列出所有题单的进度")
+    p.add_argument("--all", action="store_true", help="已做的题也列出来")
+    p.set_defaults(func=cmd_plan)
 
     args = parser.parse_args(argv)
     sys.exit(args.func(args) or 0)
